@@ -8,7 +8,7 @@ Every function in `R/` was read line by line. Claims about adegenet and vcfR beh
 
 ## Status of fixes
 
-PR #3 on the AgrDataSci fork (25 November 2026) fixes M1, I1, B1, R2, R3 and D1, with one `testthat` file per finding in `tests/testthat/`. The fixes and tests were written without R at hand. The first run of `devtools::test()`, locally or through the `tests` workflow, confirms them. The summary table below describes version 1.0.2.
+PR #3 on the AgrDataSci fork (25 November 2026) fixes M1, I1, B1, R2, R3 and D1, with one `testthat` file per finding in `tests/testthat/`. The `tests` workflow ran them on GitHub Actions and all 24 expectations pass, with none skipped. The tests were not run against version 1.0.2, so their failure before the fix rests on reading the code. The summary table below describes version 1.0.2.
 
 ## Summary
 
@@ -117,7 +117,7 @@ The full list follows, grouped by area, with file and line.
 
 ## Proposed order of work
 
-1. Fix M1, I1, B1 and R2, each with a test, and release as a patch with a `NEWS.md` entry that names the changed results. Done in PR #3, pending the first test run.
+1. Fix M1, I1, B1 and R2, each with a test, and release as a patch with a `NEWS.md` entry that names the changed results. Done in PR #3.
 2. Fix F1, R1, R4, I2 and P1 with tests.
 3. Settle the licence (D1), move NAMESPACE to roxygen (D2), add example data, tests and CI (D3, D4).
 4. Clean dependencies and metadata (D5, D6, D7), then the remaining medium and low findings.
