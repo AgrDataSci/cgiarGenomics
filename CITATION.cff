@@ -16,7 +16,7 @@ authors:
     email: "s.cruz@cgiar.org"
   - given-names: "Lorena"
     family-names: "Guimarães Batista"
-version: "1.0.4"
+version: "2.0.0"
 license: MIT
 repository-code: "https://github.com/Breeding-Analytics/cgiarGenomics"
 url: "https://github.com/Breeding-Analytics/bioflow"

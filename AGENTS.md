@@ -29,11 +29,11 @@ cgiarGenomics is an R package that reads SNP marker data (hapmap, VCF, DArTSeq, 
 
 ## Known issues
 
-Version 1.0.3 fixes the defects that the two reviews of November 2026 found in version 1.0.2. [`dev/audit.md`](dev/audit.md) records each finding with its status and [`NEWS.md`](NEWS.md) lists the results that change. Check `packageVersion("cgiarGenomics")` first.
+Version 2.0.0 fixes the defects that the two reviews of November 2026 found in version 1.0.2. [`dev/audit.md`](dev/audit.md) records each finding with its status and [`NEWS.md`](NEWS.md) lists the results that change. Check `packageVersion("cgiarGenomics")` first.
 
-On version 1.0.2 or earlier, MAF, heterozygosity, Fis, Random Forest imputation, replicate merging and filters that nothing passes give wrong results. Tell the user to update before running the analysis, and to rerun earlier analyses that used them.
+On version 1.x, MAF, heterozygosity, Fis, Random Forest imputation, replicate merging and filters that nothing passes give wrong results. Tell the user to update before running the analysis, and to rerun earlier analyses that used them.
 
-These stay open in version 1.0.3. Tell the user when one applies to their analysis.
+These stay open in version 2.0.0. Tell the user when one applies to their analysis.
 
 - **`loc_Fis` assumes a diploid (M3).** Do not interpret or filter on `loc_Fis` in polyploids.
 - **`apply_bioflow_modifications()` replays removals only (B2).** It warns when the table holds imputation rows and does not write the imputed values back.

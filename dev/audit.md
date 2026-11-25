@@ -8,7 +8,7 @@ Every function in `R/` was read line by line. Claims about adegenet and vcfR beh
 
 ## Status of fixes
 
-PR #3 on the AgrDataSci fork (25 November 2026) brings the package to version 1.0.3. It fixes the findings marked "fixed in PR #3" below and the additional findings of the external review, each with tests in `tests/testthat/`. The `tests` workflow runs the unit tests and `R CMD check` on GitHub Actions for every pull request, with vcfR, randomForest, dartR.base and Java installed, so the Beagle, Random Forest and DArTSeq paths are exercised.
+PR #3 on the AgrDataSci fork (25 November 2026) brings the package to version 1.0.3, and PR #5 to 2.0.0. It fixes the findings marked "fixed in PR #3" below and the additional findings of the external review, each with tests in `tests/testthat/`. The `tests` workflow runs the unit tests and `R CMD check` on GitHub Actions for every pull request, with vcfR, randomForest, dartR.base and Java installed, so the Beagle, Random Forest and DArTSeq paths are exercised.
 
 The tests were written against the fixed code. They were not run against version 1.0.2, so their failure before the fix rests on reading the code and on the external review, which ran version 1.0.2 and observed the defects.
 

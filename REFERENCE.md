@@ -1,6 +1,6 @@
 # Function reference
 
-Every exported function of cgiarGenomics 1.0.4, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
+Every exported function of cgiarGenomics 2.0.0, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
 
 All readers return a [genlight](https://github.com/thibautjombart/adegenet) object of alternative allele dosages, with individuals in rows and loci in columns. Each one stores quality metrics in the `other` slot, which the filtering functions read.
 
