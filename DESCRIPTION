@@ -4,8 +4,10 @@ Title: Reading, Quality Control and Imputation of SNP Marker Data
 Version: 1.0.2
 Date: 2026-11-25
 Authors@R:
-    person(given = "Sergio Andres", family = "Cruz",
-           email = "s.cruz@cgiar.org", role = c("aut", "cre"))
+    c(person(given = "Sergio Andres", family = "Cruz",
+             email = "s.cruz@cgiar.org", role = c("aut", "cre")),
+      person(given = "Lorena", family = "Batista Guimarães",
+             role = "aut"))
 Description: Reads bi-allelic SNP marker data from hapmap, VCF, DArTSeq and
     DArTag files for diploid and polyploid crops, and converts them to allele
     dosages in an 'adegenet' genlight object. Provides quality metrics,
@@ -43,3 +45,4 @@ Suggests:
     parallel
 Config/roxygen2/version: 8.0.0
 Roxygen: list(markdown = TRUE)
+Encoding: UTF-8
