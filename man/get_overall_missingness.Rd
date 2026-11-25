@@ -18,7 +18,11 @@ The overall missing rate is the proportion of missing genotype calls
 across all individuals and loci in the dataset.
 }
 \examples{
-data(example_genlight)
-overall_miss <- get_overall_missingness(example_genlight)
-print(overall_miss)
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = new("genlight", mt, ploidy = 2)
+get_overall_missingness(gl)
 }

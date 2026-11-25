@@ -38,10 +38,14 @@ import(adegenet)
 import(stringr)
 importFrom(magrittr,"%>%")
 importFrom(methods,new)
-importFrom(stats,complete.cases)
-importFrom(stats,na.omit)
-importFrom(stats,predict)
-importFrom(stats,setNames)
-importFrom(utils,hasName)
-importFrom(utils,read.csv)
-importFrom(utils,write.table)
+importFrom(stats,
+  complete.cases,
+  na.omit,
+  predict,
+  setNames
+)
+importFrom(utils,
+  hasName,
+  read.csv,
+  write.table
+)

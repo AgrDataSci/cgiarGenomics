@@ -7,27 +7,22 @@
 get_all_gt_calls(alleles, ploidity, sep = "")
 }
 \arguments{
-\item{alleles}{List[String]. A list of unique alleles, e.g., c("A", "B", "C").}
+\item{alleles}{Character vector of unique alleles, e.g., \code{c("A", "B")}.}
 
 \item{ploidity}{Integer. The ploidity level of the organism.}
+
+\item{sep}{String. Separator placed between alleles (default \code{""}).}
 }
 \value{
-List[String]. A list of all possible genotype calls for the given alleles
-        and ploidity level.
+Character vector of all possible genotype calls.
 }
 \description{
-This function generates all possible genotype calls for a given set of alleles
-and ploidity level. The genotype calls are represented as strings of characters,
-with each allele being a single character.
-}
-\details{
-The function uses a recursive approach to generate all possible combinations of
-alleles for the specified ploidity level. For example, with two alleles "A" and "B",
-and a ploidity of 2 (diploid), the function would generate the following genotype
-calls: "AA", "AB", "BA", "BB".
+Generates all ordered combinations of \code{alleles} for the given ploidity, so
+heterozygotes appear in every order (\code{AB} and \code{BA}).
 }
 \examples{
-get_all_gt_calls(c("A", "B"), 2)  # Returns c("AA", "AB", "BA", "BB")
-get_all_gt_calls(c("A", "B", "C"), 3)  # Returns all 27 possible triploid calls
-get_all_gt_calls(c("A"), 1)  # Returns c("A")
+cgiarGenomics:::get_all_gt_calls(c("A", "B"), 2)  # "AA" "AB" "BA" "BB"
+cgiarGenomics:::get_all_gt_calls(c("A", "B"), 2, sep = "/")  # "A/A" "A/B" "B/A" "B/B"
+length(cgiarGenomics:::get_all_gt_calls(c("A", "B", "C"), 3))  # 27
 }
+\keyword{internal}

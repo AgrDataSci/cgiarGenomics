@@ -11,7 +11,7 @@ get_loc_missing(gl)
 }
 \value{
 A numeric vector of length equal to the number of loci (markers),
-  containing the missing rate for each locus.
+containing the missing rate for each locus.
 }
 \description{
 Compute the missing rate for each locus (marker) in a genlight object.
@@ -19,7 +19,11 @@ The missing rate is a value between 0 and 1, where 0 indicates no missing data
 for that locus, and 1 indicates that all samples have missing data for that locus.
 }
 \examples{
-data(example_genlight)
-loc_miss <- get_loc_missing(example_genlight)
-head(loc_miss)
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = new("genlight", mt, ploidy = 2)
+get_loc_missing(gl)
 }

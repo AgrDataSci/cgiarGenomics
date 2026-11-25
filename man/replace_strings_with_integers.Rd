@@ -13,7 +13,7 @@ replace_strings_with_integers(lookup_table, strings_to_replace)
 }
 \value{
 A list of integers, where each string in the input list has been replaced with its
-        corresponding integer value from the lookup table, or NA if no match was found.
+corresponding integer value from the lookup table, or NA if no match was found.
 }
 \description{
 This function takes two inputs: a named list or vector with string keys and integer values,
@@ -27,5 +27,6 @@ it will be replaced with NA.
 \examples{
 lookup <- c(A = 1, B = 2, C = 3)
 strings <- c("B", "A", "D", "C")
-replace_strings_with_integers(lookup, strings)  # Returns list(2, 1, NA, 3)
+cgiarGenomics:::replace_strings_with_integers(lookup, strings)  # Returns list(2, 1, NA, 3)
 }
+\keyword{internal}

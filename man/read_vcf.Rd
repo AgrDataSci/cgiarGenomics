@@ -11,19 +11,24 @@ read_vcf(path, ploidity = 2, na_reps = c("-", "./."), sep = "/")
 
 \item{ploidity}{Integer. Ploidity level of the organism. (Default = 2)}
 
-\item{na_reps}{Vector. A vector containing the NA representations of genotype calls (default: empty).}
+\item{na_reps}{Vector. Genotype strings to treat as missing
+(default \code{c("-", "./.")}). vcfR already converts fully missing calls.}
+
+\item{sep}{Kept for compatibility and not used. Phased (\code{|}) and unphased
+(\code{/}) calls are both read, also when one file mixes them.}
 }
 \value{
-A genlight object.
+A genlight object with metrics from \code{\link[=recalc_metrics]{recalc_metrics()}}.
 }
 \description{
-This function reads a VCF file (compressed or uncompressed) and converts it into a genlight object.
+Reads a VCF file (compressed or uncompressed) and converts it into a
+genlight object of alternative allele dosages. Markers that are not
+bi-allelic SNPs, or share a position with another marker, are removed.
+Requires the suggested package vcfR.
 }
 \examples{
-fl = "https://github.com/Breeding-Analytics/cgiarGenomics/raw/main/tests/vcf_fmt/diploid.vcf.gz"
-tempfl <- tempfile(pattern = 'diploid', fileext = '.vcf.gz')
-download.file(fl, destfile = tempfl)
-dat.dose.vcf = read_vcf(tempfl, ploidity = 2)
-print(dat.dose.vcf)
-plot(dat.dose.vcf)
+\dontrun{
+gl = read_vcf("tests/vcf_fmt/diploid.vcf.gz", ploidity = 2)
+gl
+}
 }

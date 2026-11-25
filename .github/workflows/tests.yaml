@@ -27,20 +27,11 @@ jobs:
           extra-packages: any::devtools, any::rcmdcheck
           needs: check
 
-      - name: Document (temporary step)
-        run: |
-          unlink(list.files("man", full.names = TRUE))
-          roxygen2::roxygenise()
-          system("tar czf /tmp/doc.tgz man NAMESPACE && echo DOC_BEGIN && base64 -w 76 /tmp/doc.tgz && echo DOC_END")
-        shell: Rscript {0}
-
       - name: Run tests
-        if: always()
         run: devtools::test(stop_on_failure = TRUE)
         shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
-        if: always()
         with:
           args: 'c("--no-manual")'
-          error-on: '"error"'
+          error-on: '"warning"'

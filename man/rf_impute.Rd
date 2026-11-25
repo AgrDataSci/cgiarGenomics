@@ -4,16 +4,27 @@
 \alias{rf_impute}
 \title{Random Forest imputation for genotype matrix}
 \usage{
-rf_impute(gl, nflank = 100, ntree = 100, seed = NULL)
+rf_impute(
+  gl,
+  ploidity = 2,
+  nflank = 100,
+  ntree = 100,
+  seed = NULL,
+  nthreads = NULL
+)
 }
 \arguments{
 \item{gl}{genlight object}
+
+\item{ploidity}{Ploidy level (default=2)}
 
 \item{nflank}{Number of flanking markers on each side (default=100)}
 
 \item{ntree}{Number of trees in random forest (default=100)}
 
 \item{seed}{Optional seed for reproducibility}
+
+\item{nthreads}{Number of parallel threads. Default uses get_default_beagle_threads() (half cores, max 4).}
 }
 \value{
 List where names are dosage values and elements are linear indices of NA positions
@@ -22,5 +33,7 @@ List where names are dosage values and elements are linear indices of NA positio
 Applies Random Forest imputation to a genotype matrix by iterating through markers.
 For each marker with missing data, uses flanking markers as predictors.
 Respects chromosome boundaries to avoid using markers from different chromosomes.
+Markers are processed in parallel using the specified number of cores.
+Predictors are first filled by frequency imputation.
 }
 \keyword{internal}

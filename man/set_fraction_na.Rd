@@ -2,7 +2,7 @@
 % Please edit documentation in R/geno_imputation.R
 \name{set_fraction_na}
 \alias{set_fraction_na}
-\title{Mask a fraction of genotype calls for measure the 
+\title{Mask a fraction of genotype calls for measure the
 accuracy of an imputation method}
 \usage{
 set_fraction_na(gl, fraction = 0.1)
@@ -10,13 +10,28 @@ set_fraction_na(gl, fraction = 0.1)
 \arguments{
 \item{gl}{A genlight instance}
 
-\item{fraction}{percentage of data to mask [0 - 1], default = 0.1}
+\item{fraction}{Share of calls to mask, between 0 and 1 (default 0.1)}
 }
 \value{
-A genlight instance where the genotype matrix have as NA
-the given fraction of missing data
+A genlight instance with the given fraction of calls set to \code{NA}.
+The linear indices of the masked cells are in \code{other$masked_cells}. Pass
+the object to \code{\link[=get_accuracy]{get_accuracy()}} as \code{masked_gl}.
 }
 \description{
-Mask a fraction of genotype calls for measure the 
+Mask a fraction of genotype calls for measure the
 accuracy of an imputation method
+}
+\details{
+Only calls that are not missing are masked. The result keeps individual
+and locus names, chromosomes, positions and alleles.
+}
+\examples{
+mt = matrix(c(0, 1, 2, 1,
+              2, 2, 1, 0,
+              0, 1, 1, 2),
+            nrow = 4)
+gl = new("genlight", mt, ploidy = 2)
+set.seed(1)
+masked = set_fraction_na(gl, fraction = 0.25)
+as.matrix(masked)
 }

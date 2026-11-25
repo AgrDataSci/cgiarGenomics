@@ -2,10 +2,43 @@
 % Please edit documentation in R/geno_filtering_adegenet.R
 \name{apply_sequence_filtering}
 \alias{apply_sequence_filtering}
-\title{Apply a sequence of filterings over a gl object}
+\title{Apply a sequence of filters to a genlight object}
 \usage{
 apply_sequence_filtering(gl, filt_sequence)
 }
+\arguments{
+\item{gl}{A genlight object with metrics from \code{\link[=recalc_metrics]{recalc_metrics()}}.}
+
+\item{filt_sequence}{A list of filter steps. Each step is a list with
+elements \code{param}, \code{operator} and \code{threshold}, as in \code{\link[=filter_gl]{filter_gl()}}.}
+}
+\value{
+A list with \code{gl} (the filtered genlight object) and \code{filt_log} (one
+\code{\link[=filter_gl]{filter_gl()}} result per step, named \verb{<param>_<step>}).
+}
 \description{
-filt_sequence named list (param = param_name, threshold: t, operator: op)
+Runs filters in the given order, recalculating metrics after each one, so
+every step sees the object left by the previous step. Two steps are always
+added at the end to remove loci and individuals with only missing data.
+When no locus or no individual passes a step, the function stops with an
+error of class \code{cgiarGenomics_empty_filter}, because the step would remove
+everything.
+}
+\examples{
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = recalc_metrics(new("genlight", mt, ploidy = 2))
+steps = list(
+  list(param = "loc_miss", operator = "<=", threshold = 0.3),
+  list(param = "ind_miss", operator = "<=", threshold = 0.5)
+)
+out = apply_sequence_filtering(gl, steps)
+out$gl
+names(out$filt_log)
+}
+\seealso{
+\code{\link[=filter_gl]{filter_gl()}}, \code{\link[=get_parameter_margin]{get_parameter_margin()}}
 }

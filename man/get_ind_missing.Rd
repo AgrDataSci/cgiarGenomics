@@ -11,7 +11,7 @@ get_ind_missing(gl)
 }
 \value{
 A numeric vector of length equal to the number of individuals (samples),
-  containing the missing rate for each individual.
+containing the missing rate for each individual.
 }
 \description{
 Compute the missing rate for each individual (sample) in a genlight object.
@@ -19,7 +19,11 @@ The missing rate is a value between 0 and 1, where 0 indicates no missing data
 for that individual, and 1 indicates that all loci have missing data for that individual.
 }
 \examples{
-data(example_genlight)
-ind_miss <- get_ind_missing(example_genlight)
-head(ind_miss)
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = new("genlight", mt, ploidy = 2)
+get_ind_missing(gl)
 }
