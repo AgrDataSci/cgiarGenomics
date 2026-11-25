@@ -1,11 +1,20 @@
 Package: cgiarGenomics
 Type: Package
-Title: Base functions for management of genomic data
+Title: Reading, Quality Control and Imputation of SNP Marker Data
 Version: 1.0.2
-Date: 2022-09-09
-Author: Sergio
-Maintainer: Sergio <s.cruz@cgiar.org>
-Description: Software for genomics applications
+Date: 2026-11-25
+Authors@R:
+    person(given = "Sergio Andres", family = "Cruz",
+           email = "s.cruz@cgiar.org", role = c("aut", "cre"))
+Description: Reads bi-allelic SNP marker data from hapmap, VCF, DArTSeq and
+    DArTag files for diploid and polyploid crops, and converts them to allele
+    dosages in an 'adegenet' genlight object. Provides quality metrics,
+    sequential filtering of loci and individuals, imputation by allele
+    frequency, Random Forest or 'Beagle', merging of replicate samples,
+    identity-by-state and Mendelian checks, and export to VCF. It is the
+    genomic data engine of Bioflow, the CGIAR breeding analytics pipeline.
+URL: https://github.com/Breeding-Analytics/cgiarGenomics
+BugReports: https://github.com/Breeding-Analytics/cgiarGenomics/issues
 License: GPL (>= 2)
 Depends:
     R (>= 3.5.0),

@@ -105,7 +105,7 @@ The full list follows, grouped by area, with file and line.
 
 **D5. Undeclared and unneeded dependencies (Medium, confirmed).** `plot_overall_missingness()` calls `ggpubr`, which is not declared. The three plot functions in `R/QC_plots_adegenet.R` use an older object layout (`geno_obj$geno`) and are not exported, yet they pull ggplot2, ggrepel and scales into Imports. `parallel` is used under Suggests without a `requireNamespace()` check. Remove or update the plots and move their packages to Suggests.
 
-**D6. Metadata is out of date (Medium, confirmed).** `DESCRIPTION` has no `Authors@R`, a 2022 date, a one-line description, and no `URL` or `BugReports`. The README installs from `Breeding-Analytics/cgiarGenomics`, which is correct for the upstream package but should say so. There is no `CITATION.cff` and no DOI.
+**D6. Metadata is out of date (Medium, fixed in PR #2).** `DESCRIPTION` now has `Authors@R` (Sergio Andres Cruz, author and maintainer), a current date, a full description, and `URL` and `BugReports`. There is still no `CITATION.cff` and no DOI.
 
 **D7. Beagle JAR in the package (Low, confirmed).** `inst/extdata/beagle.27Feb25.75f.jar` (310 KB) is fine on GitHub and Apache 2.0 allows redistribution, provided the licence and notice travel with it. Add the Apache licence text next to the JAR. CRAN will not accept the JAR inside the package.
 
