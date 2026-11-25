@@ -1,7 +1,7 @@
 Package: cgiarGenomics
 Type: Package
 Title: Reading, Quality Control and Imputation of SNP Marker Data
-Version: 1.0.2
+Version: 1.0.3
 Date: 2026-11-25
 Authors@R:
     c(person(given = "Sergio Andres", family = "Cruz",
@@ -17,7 +17,7 @@ Description: Reads bi-allelic SNP marker data from hapmap, VCF, DArTSeq and
     genomic data engine of Bioflow, the CGIAR breeding analytics pipeline.
 URL: https://github.com/Breeding-Analytics/cgiarGenomics
 BugReports: https://github.com/Breeding-Analytics/cgiarGenomics/issues
-License: GPL (>= 2)
+License: MIT + file LICENSE
 Depends:
     R (>= 3.5.0),
     adegenet
@@ -42,7 +42,9 @@ Suggests:
     vcfR,
     randomForest,
     dartR.base,
-    parallel
+    parallel,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8

@@ -1,7 +1,7 @@
 <!-- badges: start -->
 [![ProjStatus](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 <!-- badges: end -->
 
 # cgiarGenomics
@@ -145,7 +145,7 @@ The metrics sit in the `other` slot of the object, as `loc.metrics` (MAF, missin
 
 ## Status
 
-Version 1.0.2 is in use behind Bioflow. A code audit in November 2026 found defects that change results off that path, including MAF values divided by ploidy twice and wrong dosages from Random Forest imputation. [`dev/audit.md`](dev/audit.md) lists each finding with its location and proposed fix, and the documentation of every affected function names the issue. Read it before you rely on MAF filters, Random Forest imputation, DArTSeq reading or replicate merging.
+Version 1.0.2 is in use behind Bioflow. A code audit in November 2026 found defects that change results off that path. [`dev/audit.md`](dev/audit.md) lists each finding with its location and proposed fix, and the documentation of every affected function names the issue. The development version fixes the four critical ones, namely MAF values divided by ploidy twice, wrong dosages from Random Forest imputation, DArTSeq reading that dropped every locus, and Bioflow modifications that dropped a whole margin. [`NEWS.md`](NEWS.md) records which results change. Read the audit before you rely on filters that nothing passes, imputation accuracy or replicate merging.
 
 ## Contributing
 
@@ -157,6 +157,6 @@ Cite the package in R with `citation("cgiarGenomics")`. When you use it through 
 
 ## License
 
-The package is released under the [MIT License](LICENSE), copyright CGIAR Breeding Analytics Team. `DESCRIPTION` still declares GPL (>= 2), and the maintainers will align the two. The bundled Beagle JAR is distributed by its authors under the Apache License 2.0.
+The package is released under the [MIT License](LICENSE.md), copyright CGIAR Breeding Analytics Team. The bundled Beagle JAR is distributed by its authors under the Apache License 2.0.
 
 Contact the Breeding Analytics team at breedinganalytics@cgiar.org.

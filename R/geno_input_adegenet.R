@@ -325,10 +325,6 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
 #'
 #' @return A genlight object with mapped SNPs and metrics from [recalc_metrics()].
 #'
-#' @section Known issue:
-#' When every SNP is mapped, every locus is removed. When some are unmapped,
-#' positions may be taken from the wrong rows. See `dev/audit.md`, findings R2
-#' and R3.
 #' @export
 #'
 #' @examples
@@ -374,12 +370,17 @@ read_DArTSeq_SNP <- function(path, snp_id, chr_name, pos_name) {
                     SNPs withoud position data, removed.")
   }
   
-  # Remove SNPs without position data
-  gl <- gl[, -c(no_loc)]
+  # Remove SNPs without position data. Skip when every SNP is mapped, since
+  # indexing with an empty negative vector would drop every locus.
+  if(length(no_loc) > 0){
+    gl <- gl[, -c(no_loc)]
+    pos <- pos[-c(no_loc)]
+    chrom <- chrom[-c(no_loc)]
+  }
   
-  # Assign the position and chromosome information to the genlight object
-  adegenet::position(gl) <- gl@other$loc.metrics[, pos_name]
-  adegenet::chromosome(gl) <- gl@other$loc.metrics[, chr_name]
+  # Assign the position and chromosome of the loci that were kept
+  adegenet::position(gl) <- pos
+  adegenet::chromosome(gl) <- chrom
   
   gl <- recalc_metrics(gl)
   return(gl)

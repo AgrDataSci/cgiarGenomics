@@ -52,9 +52,8 @@ split_strings <- function(l, ploidity){
 #' @return The genlight object with the removals applied.
 #'
 #' @section Known issue:
-#' When only individuals or only loci are removed, every element of the other
-#' margin is dropped. Imputation rows are never applied, because the function
-#' returns before reaching them. See `dev/audit.md`, findings B1 and B2.
+#' Imputation rows are never applied, because the function returns before
+#' reaching them. See `dev/audit.md`, finding B2.
 #' @export
 apply_bioflow_modifications <- function(gl, modifications){
   
@@ -75,8 +74,10 @@ apply_bioflow_modifications <- function(gl, modifications){
     dplyr::filter(is.na(row)) %>% 
     dplyr::pull(col)
   
-  ind_idx <- seq(1:length(adegenet::indNames(gl)))[-ind_out]
-  loc_idx <- seq(1:length(adegenet::locNames(gl)))[-loc_out]
+  # setdiff() keeps every element when nothing is removed from a margin.
+  # Negative indexing with an empty vector would drop the whole margin.
+  ind_idx <- setdiff(seq_len(adegenet::nInd(gl)), ind_out)
+  loc_idx <- setdiff(seq_len(adegenet::nLoc(gl)), loc_out)
   
 
   filt_gl <- gl[ind_idx, loc_idx]

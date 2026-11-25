@@ -158,10 +158,6 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
 #'
 #' @return List where names are dosage values and elements are linear indices of NA positions
 #'
-#' @section Known issue:
-#' Predictions are factors, and their integer codes are written as dosages, so
-#' imputed values are shifted. Do not use `method = "random_forest"` until this
-#' is fixed. See `dev/audit.md`, finding I1.
 #' @keywords internal
 rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, nthreads = NULL) {
   
@@ -266,7 +262,9 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
     if (length(imputed_target) == 1) {
       return(pred_mt[, i_marker])
     }
-    return(imputed_target)
+    # randomForest classifies and returns a factor. Convert its labels back to
+    # dosages, otherwise the matrix receives the factor codes.
+    return(as.numeric(as.character(imputed_target)))
   }
   
   # Run in parallel or sequentially depending on nthreads
@@ -338,8 +336,8 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
 #'   - log: imputation dictionary (imputed positions grouped by dosage)
 #'
 #' @section Known issue:
-#' `method = "random_forest"` writes wrong dosages, and the reported count of
-#' missing calls is too low. See `dev/audit.md`, findings I1 and I6.
+#' The reported count of missing calls is too low. See `dev/audit.md`,
+#' finding I6.
 #' @export
 #'
 #' @examples

@@ -278,11 +278,11 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 #'
 #' @return A numeric vector with one value per locus, between 0 and 0.5.
 #'
-#' @section Known issue:
-#' [adegenet::glMean()] already returns allele frequencies, and this function
-#' divides them by `ploidy` again. In version 1.0.2 the stored MAF is half the
-#' true value in diploids, and a locus fixed for the alternative allele gets
-#' 0.5. Every MAF filter inherits the error. See `dev/audit.md`, finding M1.
+#' @details
+#' [adegenet::glMean()] returns the frequency of the alternative allele for any
+#' ploidy, so `ploidy` is not used in the calculation. The argument is kept so
+#' that existing calls keep working. Versions up to 1.0.2 divided the frequency
+#' by `ploidy` a second time and returned values that were too low.
 #' @export
 #'
 #' @examples
@@ -294,7 +294,8 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_maf(gl)
 get_maf <- function(gl, ploidy = 2){
-  alf <- adegenet::glMean(gl)*(1/ploidy)
+  # glMean() already returns the alternative allele frequency
+  alf <- adegenet::glMean(gl)
   maf <- ifelse(alf > 0.5, 1 - alf, alf)
   return(maf)
 }
@@ -330,8 +331,7 @@ get_inbreeding <- function(gl){
 #'   `other$ind.metrics`.
 #'
 #' @section Known issue:
-#' `maf` and `loc_Fis` inherit the error described in [get_maf()], and
-#' `loc_Fis` assumes a diploid. See `dev/audit.md`, findings M1 and M3.
+#' `loc_Fis` assumes a diploid. See `dev/audit.md`, finding M3.
 #' @export
 #'
 #' @examples

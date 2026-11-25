@@ -1,6 +1,6 @@
 # Function reference
 
-Every exported function of cgiarGenomics 1.0.2, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
+Every exported function of cgiarGenomics 1.0.3, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
 
 All readers return a [genlight](https://github.com/thibautjombart/adegenet) object of alternative allele dosages, with individuals in rows and loci in columns. Each one stores quality metrics in the `other` slot, which the filtering functions read.
 
@@ -15,7 +15,7 @@ All readers return a [genlight](https://github.com/thibautjombart/adegenet) obje
 |---|---|---|
 | `read_hapmap(path, ploidity = 2, sep = "")` | Reads a tab-separated hapmap file. The first allele in `alleles` is the reference. Samples start at column 12. ⚠ (R4, R6) | any |
 | `read_vcf(path, ploidity = 2, na_reps = c("-", "./."), sep = "/")` | Reads a VCF, compressed or not, through vcfR. Use `sep = "\\|"` for phased files. ⚠ (R5) | any |
-| `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Reads a standard DArTSeq SNP report through dartR.base and keeps mapped SNPs. ⚠ (R2, R3) | diploid |
+| `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Reads a standard DArTSeq SNP report through dartR.base and keeps mapped SNPs. | diploid |
 | `read_DArTag_count_dosage(dosage_path, counts_path, ploidity, ...)` | Reads a DArTag dosage report with its collapsed allele counts file. Alleles come from the single base that differs between tags. | any |
 | `read_one_row_dart_gt_data(path, sample.name.row, first.data.row, first.data.col, snp_id_col)` *internal* | Splits a one-row-per-variant DArT report into dosages and metadata. Used by `read_DArTag_count_dosage()`. | any |
 | `extract_dart_gt(data, sample.name.row = 2, first.data.row = 9, first.data.col = 6)` *internal* | Extracts the genotype block of a DArT report read without header. | any |
@@ -31,7 +31,7 @@ Every reader drops markers that are not bi-allelic SNPs, that lack alleles, or t
 | `get_loc_missing(gl)` | Missing rate per locus. |
 | `get_ind_missing(gl)` | Missing rate per individual. |
 | `get_overall_missingness(gl)` | Share of missing calls in the whole matrix. |
-| `get_maf(gl, ploidy = 2)` | Minor allele frequency per locus. ⚠ (M1, values are divided by ploidy twice) |
+| `get_maf(gl, ploidy = 2)` | Minor allele frequency per locus. `ploidy` is kept for compatibility and not used. |
 | `get_loc_heterozygosity(gl, ploidy = 2)` | Share of heterozygous calls per locus. ⚠ (M2) |
 | `get_ind_heterozygosity(gl, ploidy = 2)` | Share of heterozygous calls per individual. ⚠ (M2) |
 | `get_heterozygosity_metrics(gl, ploidy = 2)` | Both of the above in one list (`het_ind`, `het_loc`). ⚠ (M2) |
@@ -62,7 +62,7 @@ Valid `param` values are `maf`, `loc_miss`, `loc_het`, `loc_Fis`, `ind_miss` and
 
 | Function | What it does |
 |---|---|
-| `impute_gl(gl, ploidity = 2, method, ...)` | Imputes missing dosages with `"frequency"`, `"random_forest"` or `"beagle"`. Returns `gl` and `log`, the imputed cells grouped by dosage. ⚠ (I1 for random forest, I6) |
+| `impute_gl(gl, ploidity = 2, method, ...)` | Imputes missing dosages with `"frequency"`, `"random_forest"` or `"beagle"`. Returns `gl` and `log`, the imputed cells grouped by dosage. ⚠ (I6) |
 | `impute_beagle(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx4g", burnin = 3, iterations = 12, seed = -99999, nthreads = NULL)` | Runs Beagle 5 on a temporary VCF. Diploids only. Usually called through `impute_gl(method = "beagle")`. ⚠ (I4, I5) |
 | `i_freq_impute(q_frq, ploidity = 2)` *internal* | Draws one dosage from an allele frequency. |
 | `set_fraction_na(gl, fraction = 0.1)` | Masks a random share of calls to test imputation. ⚠ (I3) |
@@ -88,7 +88,7 @@ Method-specific arguments go through `...` by name. Random forest takes `nflank`
 
 | Function | What it does |
 |---|---|
-| `apply_bioflow_modifications(gl, modifications)` | Replays the removals that BioFlow recorded in its modifications table. ⚠ (B1, B2) |
+| `apply_bioflow_modifications(gl, modifications)` | Replays the removals that BioFlow recorded in its modifications table. ⚠ (B2) |
 
 ## Set-up and dependencies
 

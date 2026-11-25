@@ -38,7 +38,7 @@ write_vcf(imputed$gl, "clean.vcf.gz")
 ## Rules
 
 1. Run code before reporting results, and report the numbers of loci and individuals kept at each step.
-2. Do not filter on the package's `maf` and do not use `method = "random_forest"`. Both give wrong values in version 1.0.2. `AGENTS.md` gives the workarounds.
+2. Check `packageVersion("cgiarGenomics")`. Version 1.0.2 and earlier give wrong `maf` values and wrong dosages from `method = "random_forest"`. Ask the user to update before using either.
 3. Tell the user when a known issue from `AGENTS.md` applies to their analysis.
 4. Keep `ploidity` equal to the ploidy of the data in every call.
 5. Never invent function names or arguments. Check `REFERENCE.md` or the R help.

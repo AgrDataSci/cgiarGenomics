@@ -6,6 +6,10 @@ Audit of `main` at commit `fff3880` (4 November 2026), 25 November 2026. It cove
 
 Every function in `R/` was read line by line. Claims about adegenet and vcfR behaviour were checked against their current source code (adegenet `R/glFunctions.R` and `R/glHandle.R`, vcfR `src/extract_gt.cpp`). R was not available in the audit environment, so no code was run. Each finding below says how sure it is. **Confirmed** means the code path and the upstream source leave no doubt. **Likely** means a short test in R should confirm it before the fix. Every fix proposed here needs a `testthat` test that fails before the fix and passes after it.
 
+## Status of fixes
+
+PR #3 on the AgrDataSci fork (25 November 2026) fixes M1, I1, B1, R2, R3 and D1, with one `testthat` file per finding in `tests/testthat/`. The fixes and tests were written without R at hand. The first run of `devtools::test()`, locally or through the `tests` workflow, confirms them. The summary table below describes version 1.0.2.
+
 ## Summary
 
 The package does what BioFlow needs on the common path, which is reading a diploid hapmap or unphased VCF, filtering by missingness and imputing by frequency. Off that path it has defects that change results without an error. The five that matter most are listed first.
@@ -29,9 +33,9 @@ The full list follows, grouped by area, with file and line.
 
 **R1. Duplicated marker IDs are not renamed (High, confirmed).** `R/geno_read_base.R:54` tests `dplyr::row_number() %in% id_dup`, but `id_dup` is a logical vector. `%in%` coerces `TRUE` to 1, so only row 1 is renamed, and only when any duplicate exists. The genlight object then carries duplicated locus names. Fix with `id_dup_idx = which(id_dup)` and `dplyr::row_number() %in% id_dup_idx`.
 
-**R2. `read_DArTSeq_SNP()` removes every locus when none are unmapped (Critical, confirmed).** `R/geno_input_adegenet.R:360` runs `gl[, -c(no_loc)]`. When `no_loc` is empty, `-integer(0)` selects nothing. Guard with `if (length(no_loc) > 0)`.
+**R2. `read_DArTSeq_SNP()` removes every locus when none are unmapped (Critical, confirmed, fixed in PR #3).** `R/geno_input_adegenet.R:360` runs `gl[, -c(no_loc)]`. When `no_loc` is empty, `-integer(0)` selects nothing. Guard with `if (length(no_loc) > 0)`.
 
-**R3. `read_DArTSeq_SNP()` misaligns positions after removing loci (High, likely).** adegenet subsets `@other` only when individuals are subset (`glHandle.R`, the `treatOther` block), not loci. After line 360, `gl@other$loc.metrics` keeps its original rows, and lines 363 and 364 assign positions from rows that no longer match. Take `pos` and `chrom` from the vectors already built at lines 346 and 347, subset by the same index.
+**R3. `read_DArTSeq_SNP()` misaligns positions after removing loci (High, likely, fixed in PR #3).** adegenet subsets `@other` only when individuals are subset (`glHandle.R`, the `treatOther` block), not loci. After line 360, `gl@other$loc.metrics` keeps its original rows, and lines 363 and 364 assign positions from rows that no longer match. Take `pos` and `chrom` from the vectors already built at lines 346 and 347, subset by the same index.
 
 **R4. `read_hapmap()` aborts with separated genotype calls (High, confirmed).** Lines 192 to 201 measure `nchar()` of the raw call. With `sep = "/"`, a diploid call `A/G` has three characters, which exceeds the ploidy of 2 and triggers the abort at line 200. Strip the separator before counting, as `read_vcf()` does at line 272.
 
@@ -49,7 +53,7 @@ The full list follows, grouped by area, with file and line.
 
 ## Metrics
 
-**M1. `get_maf()` divides by ploidy twice (Critical, confirmed).** `adegenet::glMean()` already returns allele frequencies, as `glSum() / (sum(ploidy) - glNA())` in `glFunctions.R`. `R/geno_get_metrics.R:158` multiplies by `1/ploidy` again. In a diploid the stored MAF is half the true value, and a locus fixed for the alternative allele gets MAF 0.5. Every MAF filter in `apply_sequence_filtering()` and `random_select_loci()`, and the Fis estimate, inherit the error. Fix with `alf = adegenet::glMean(gl)`. This changes results for every user, so record it in `NEWS.md`.
+**M1. `get_maf()` divides by ploidy twice (Critical, confirmed, fixed in PR #3).** `adegenet::glMean()` already returns allele frequencies, as `glSum() / (sum(ploidy) - glNA())` in `glFunctions.R`. `R/geno_get_metrics.R:158` multiplies by `1/ploidy` again. In a diploid the stored MAF is half the true value, and a locus fixed for the alternative allele gets MAF 0.5. Every MAF filter in `apply_sequence_filtering()` and `random_select_loci()`, and the Fis estimate, inherit the error. Fix with `alf = adegenet::glMean(gl)`. This changes results for every user, so record it in `NEWS.md`.
 
 **M2. Heterozygosity is diluted by missing data (Medium, confirmed).** Lines 137, 138, 145 and 152 divide by all individuals or all loci, including missing calls. Divide by the number of non-missing calls instead.
 
@@ -67,7 +71,7 @@ The full list follows, grouped by area, with file and line.
 
 ## Imputation
 
-**I1. Random Forest imputation writes factor codes (Critical, confirmed).** `rf_impute()` passes the target as a factor, so `randomForest()` classifies and returns a factor. Line 282 assigns that factor into a numeric matrix, which stores its integer codes. With levels `0`, `1` and `2`, every imputed dosage is shifted by one, and dosage 2 becomes 3. Convert with `as.numeric(as.character(imputed_target))` before returning.
+**I1. Random Forest imputation writes factor codes (Critical, confirmed, fixed in PR #3).** `rf_impute()` passes the target as a factor, so `randomForest()` classifies and returns a factor. Line 282 assigns that factor into a numeric matrix, which stores its integer codes. With levels `0`, `1` and `2`, every imputed dosage is shifted by one, and dosage 2 becomes 3. Convert with `as.numeric(as.character(imputed_target))` before returning.
 
 **I2. Accuracy counts cells that were never masked (High, confirmed).** `get_accuracy()` compares every non-missing reference cell, most of which were never masked and match by construction. Reported accuracy is close to 1 whatever the method. `set_fraction_na()` should return the masked positions, and `get_accuracy()` should score only those.
 
@@ -89,19 +93,19 @@ The full list follows, grouped by area, with file and line.
 
 ## BioFlow interface
 
-**B1. `apply_bioflow_modifications()` can drop a whole margin (Critical, confirmed).** Lines 56 and 57 index with `[-ind_out]` and `[-loc_out]`. When one of them is empty, the result is empty, so a modification table with only locus removals removes every individual, and the reverse. Use `setdiff(seq_len(n), ind_out)`.
+**B1. `apply_bioflow_modifications()` can drop a whole margin (Critical, confirmed, fixed in PR #3).** Lines 56 and 57 index with `[-ind_out]` and `[-loc_out]`. When one of them is empty, the result is empty, so a modification table with only locus removals removes every individual, and the reverse. Use `setdiff(seq_len(n), ind_out)`.
 
 **B2. Imputation modifications are never applied (High, confirmed).** The function returns at line 61, so the imputation branch below it is dead code. It also calls `filter()` without the `dplyr::` prefix and builds a genlight without ploidy. If BioFlow relies on this branch, imputed values recorded in BioFlow are not replayed.
 
 ## Packaging and documentation
 
-**D1. Conflicting licences (High, confirmed).** `DESCRIPTION` declares `GPL (>= 2)` and `LICENSE` holds the MIT text. The owners decide which one applies. For MIT, use `License: MIT + file LICENSE` and the two-line LICENSE that R expects, with the full text in `LICENSE.md`.
+**D1. Conflicting licences (High, confirmed, fixed in PR #3).** `DESCRIPTION` declares `GPL (>= 2)` and `LICENSE` holds the MIT text. The owners decide which one applies. For MIT, use `License: MIT + file LICENSE` and the two-line LICENSE that R expects, with the full text in `LICENSE.md`.
 
 **D2. NAMESPACE is written by hand while documentation uses roxygen (High, confirmed).** Twenty exported functions have no help page, among them `get_maf()`, `merge_duplicate_inds()` and `read_DArTag_count_dosage()`. Ten help pages document unexported functions. `roxygen2` will not overwrite a NAMESPACE it did not write, so the two drift apart. Eight functions also carry `@export` in roxygen while NAMESPACE keeps them internal, among them `get_all_gt_calls()` and `i_freq_impute()`. This branch adds roxygen blocks to every exported function and leaves those tags as they were. Decide which helpers to export, then move NAMESPACE to roxygen.
 
 **D3. Examples cannot run (High, confirmed).** Several examples load `data(example_genlight)`, which does not exist, and `read_vcf()` downloads from the old upstream URL. `R CMD check` fails on them. Ship a small dataset in `inst/extdata` and use it in all examples.
 
-**D4. No automated tests or CI (High, confirmed).** `tests/` holds data only, `.gitignore` excludes `tests/*.R`, and the two scripts in `test_scripts/` print results instead of asserting them. Add `tests/testthat/` with one test per finding above, and a GitHub Actions `R-CMD-check` workflow.
+**D4. No automated tests or CI (High, confirmed, started in PR #3).** `tests/` holds data only, `.gitignore` excludes `tests/*.R`, and the two scripts in `test_scripts/` print results instead of asserting them. Add `tests/testthat/` with one test per finding above, and a GitHub Actions `R-CMD-check` workflow.
 
 **D5. Undeclared and unneeded dependencies (Medium, confirmed).** `plot_overall_missingness()` calls `ggpubr`, which is not declared. The three plot functions in `R/QC_plots_adegenet.R` use an older object layout (`geno_obj$geno`) and are not exported, yet they pull ggplot2, ggrepel and scales into Imports. `parallel` is used under Suggests without a `requireNamespace()` check. Remove or update the plots and move their packages to Suggests.
 
@@ -113,7 +117,7 @@ The full list follows, grouped by area, with file and line.
 
 ## Proposed order of work
 
-1. Fix M1, I1, B1 and R2, each with a test, and release as a patch with a `NEWS.md` entry that names the changed results.
+1. Fix M1, I1, B1 and R2, each with a test, and release as a patch with a `NEWS.md` entry that names the changed results. Done in PR #3, pending the first test run.
 2. Fix F1, R1, R4, I2 and P1 with tests.
 3. Settle the licence (D1), move NAMESPACE to roxygen (D2), add example data, tests and CI (D3, D4).
 4. Clean dependencies and metadata (D5, D6, D7), then the remaining medium and low findings.

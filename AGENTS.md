@@ -16,7 +16,7 @@ cgiarGenomics is an R package that reads SNP marker data (hapmap, VCF, DArTSeq, 
 | Read a hapmap file | `read_hapmap(path, ploidity, sep = "")` | Tab-separated, samples from column 12, calls written in full (`AG`, `AAGG`). Keep `sep = ""`. |
 | Read a VCF | `read_vcf(path, ploidity, sep = "/")` | Needs vcfR. Use `sep = "\\|"` for phased files. |
 | Read DArTag reports (any ploidy) | `read_DArTag_count_dosage(dosage_path, counts_path, ploidity)` | Needs both the dosage report and the collapsed counts file. Check the row and column defaults against the file. |
-| Read a DArTSeq SNP report | `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Needs dartR.base. See known issue R2 before using it. |
+| Read a DArTSeq SNP report | `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Needs dartR.base, and SNPRelate and snpStats from Bioconductor. |
 | Quality summary | `get_overall_summary(gl)` | Reads metrics stored in `gl@other`. Run `recalc_metrics(gl)` first on objects not built by this package. |
 | Per-locus or per-individual metrics | `gl@other$loc.metrics`, `gl@other$ind.metrics` | Or `get_loc_missing()`, `get_ind_missing()`, `get_maf()`, `get_heterozygosity_metrics()`. |
 | Filter loci and individuals | `apply_sequence_filtering(gl, steps)` | Steps are lists of `param`, `operator`, `threshold`. Order matters, metrics are recalculated after each step. |
@@ -29,15 +29,12 @@ cgiarGenomics is an R package that reads SNP marker data (hapmap, VCF, DArTSeq, 
 
 ## Known issues
 
-The audit in [`dev/audit.md`](dev/audit.md) lists every defect found in version 1.0.2, with location and fix. Until each is fixed, act as follows, and tell the user when one applies to their analysis.
+The audit in [`dev/audit.md`](dev/audit.md) lists every defect found in version 1.0.2, with location and fix. Version 1.0.3 fixes M1 (MAF), I1 (Random Forest dosages), B1 (`apply_bioflow_modifications()`) and R2 (DArTSeq reading). Check `packageVersion("cgiarGenomics")` first. On 1.0.2 or earlier, do not filter on `maf`, do not use `method = "random_forest"`, and tell the user to update. Until the remaining ones are fixed, act as follows, and tell the user when one applies to their analysis.
 
-- **MAF is wrong (M1).** `get_maf()` and the stored `maf` are divided by ploidy twice. Do not filter on `maf` with the package. Compute it with `f = adegenet::glMean(gl); pmin(f, 1 - f)` and subset with `gl[, keep]`, then `recalc_metrics()`.
-- **Random Forest imputation writes wrong dosages (I1).** Do not use `method = "random_forest"`.
 - **A filter step that nothing passes is skipped (F1).** After `apply_sequence_filtering()`, check `filt_log` and report any step whose `index` is empty.
-- **DArTSeq reading can drop every locus (R2).** After `read_DArTSeq_SNP()`, check that `adegenet::nLoc(gl)` is above zero and that positions look plausible.
 - **Duplicated marker IDs survive (R1).** Check `anyDuplicated(adegenet::locNames(gl))` after reading.
 - **Imputation accuracy is inflated (I2).** Score only the cells that `set_fraction_na()` masked, by comparing the matrices yourself.
-- **`apply_bioflow_modifications()` can drop a whole margin (B1).** Do not call it with a table that removes only individuals or only loci.
+- **`apply_bioflow_modifications()` ignores imputation rows (B2).** It replays removals only. Imputed values recorded in Bioflow are not written back.
 - **Separators in hapmap calls abort the reader (R4).** Remove `/` or `|` from hapmap calls before reading, or keep `sep = ""`.
 
 ## Pitfalls
