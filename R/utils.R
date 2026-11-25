@@ -22,6 +22,8 @@ read_tabular_geno <- function(path, sep = c('\t',',')){
   return(df)
 }
 
+#' Split genotype calls into alleles (internal)
+#' @noRd
 split_strings <- function(l, ploidity){
   sapply(l, function(x){
     allele_length <- nchar(x) / ploidity
@@ -34,6 +36,26 @@ split_strings <- function(l, ploidity){
 
 
 
+#' Replay BioFlow modifications on a genlight object
+#'
+#' BioFlow records quality control as a table of modifications instead of
+#' saving a new object. This function replays that table. Rows with `reason`
+#' starting with `imputation` are imputations. All other rows are removals,
+#' where a missing `col` removes the individual in `row` and a missing `row`
+#' removes the locus in `col`.
+#'
+#' @param gl A genlight object, the same one BioFlow used to record the
+#'   modifications.
+#' @param modifications A data frame with columns `reason`, `row`, `col` and,
+#'   for imputations, `value`.
+#'
+#' @return The genlight object with the removals applied.
+#'
+#' @section Known issue:
+#' When only individuals or only loci are removed, every element of the other
+#' margin is dropped. Imputation rows are never applied, because the function
+#' returns before reaching them. See `dev/audit.md`, findings B1 and B2.
+#' @export
 apply_bioflow_modifications <- function(gl, modifications){
   
   # Filtering modifications
@@ -83,6 +105,8 @@ apply_bioflow_modifications <- function(gl, modifications){
 
 
 
+#' Format counts with k, M and B suffixes for plot axes (internal)
+#' @noRd
 addUnits <-
   function(n) {
     labels <-
@@ -94,6 +118,8 @@ addUnits <-
     return(labels)
   }
 
+#' Midpoint of a cut() interval label (internal)
+#' @noRd
 get_midpoint <- function(cut_label) {
   mean(as.numeric(unlist(strsplit(gsub("\\(|\\)|\\[|\\]", "", as.character(cut_label)), ","))))
 }
@@ -223,6 +249,12 @@ write_vcf <- function(gl, output_path, na_rep = "./.") {
   close(con)
 }
 
+#' Validate method-specific arguments passed through ... (internal)
+#'
+#' @param dots Named list of arguments.
+#' @param allowed,required Character vectors of argument names.
+#' @param method Method name, used in error messages.
+#' @noRd
 check_method_args <- function(dots, allowed, required, method) {
   supplied <- names(dots)
   
@@ -267,15 +299,35 @@ check_method_args <- function(dots, allowed, required, method) {
   }
 }
 
-#' Obtain the markers where child dont meet the mendelian inheritance
+#' Count Mendelian inconsistencies in parent and offspring trios
 #'
-#' @param gl gl object with no missing data
-#' @param trio df with trios. Is expected columns designation, mother and father
+#' For each trio, counts loci where both parents carry the same homozygous
+#' dosage (0 or 2) and the offspring differs from it. Only diploid 0/1/2
+#' dosages are supported.
 #'
-#' @return returns a vector with number of impossible markers
+#' @param gl A diploid genlight object, ideally with no missing data.
+#' @param trios A data frame with columns `designation` (offspring), `mother`
+#'   and `father`, holding individual names of `gl`.
+#'
+#' @return The `trios` data frame with added columns `pedigree_present` (all
+#'   three individuals found in `gl`), `n_markers`, `n_evaluated` (loci typed
+#'   in all three), `n_missing`, `n_errors` and `error_rate`.
+#'
+#' @section Known issue:
+#' Opposite homozygous parents (0 and 2) with a homozygous offspring are not
+#' counted as errors, so the count is a lower bound. See `dev/audit.md`,
+#' finding P2.
 #' @export
 #'
 #' @examples
+#' mt = matrix(c(0, 0, 2,
+#'               2, 2, 2,
+#'               1, 0, 1),
+#'             nrow = 3, byrow = TRUE,
+#'             dimnames = list(c("mum", "dad", "kid"), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' trios = data.frame(designation = "kid", mother = "mum", father = "dad")
+#' get_mendelian_error_counts(gl, trios)
 get_mendelian_error_counts <- function(gl, trios) {
   
   if (any(adegenet::ploidy(gl) != 2)) {

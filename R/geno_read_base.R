@@ -1,12 +1,19 @@
+#' Flag markers that cannot enter a genlight object (internal)
+#'
+#' Markers without a position go to chromosome `unk` with consecutive
+#' positions. Markers are flagged when they share a position with an earlier
+#' marker, lack reference or alternative alleles, are multi-allelic or are
+#' indels.
+#'
 #' @param geno_metadata Dataframe with the expected columns id, chrom, pos, ref, alt
 #'
 #' @return Same input dataframe but added a `filter` column if true the marker don't meet
-#' the minimal requirements: no duplicated markers, physical position, bi-allelic, 
+#' the minimal requirements: no duplicated markers, physical position, bi-allelic,
 #'  allelic information, SNP.
-#' @export
 #'
-#' @examples
-#' geno_metadata(meta_daya)
+#' @section Known issue:
+#' Duplicated marker IDs are not renamed. See `dev/audit.md`, finding R1.
+#' @noRd
 process_metadata <- function(geno_metadata){
   # Expected fields id Chrom pos ref alt
   meta_columns <- c('id', 'chrom', 'pos', 'ref', 'alt')
@@ -94,39 +101,26 @@ process_metadata <- function(geno_metadata){
 
 #' From locus genotype call data, get the allelic dosage given the alleles and ploidity
 #'
-#' This function takes a list of genotype calls, a named vector of allele counts,
-#' and the ploidity level as input, and returns a list of allelic dosages for the
-#' genotype calls. The allelic dosage is the count of the alternative allele in
-#' the genotype call.
+#' Generates every possible call for the two alleles with [get_all_gt_calls()],
+#' converts each to the dosage of the alternative (second) allele with
+#' [convert_gt_to_dosage()], and looks up the observed calls with
+#' [replace_strings_with_integers()]. Calls that are not possible for these
+#' alleles, including `NA`, become `NA`.
 #'
-#' The function first generates all possible genotype calls for the given alleles
-#' and ploidity level using the `get_all_gt_calls` function. It then calculates
-#' the allelic dosages for these possible genotype calls using the `convert_gt_to_dosage`
-#' function, treating the second allele as the alternative allele.
-#'
-#' Finally, the function replaces the genotype calls in the input list with their
-#' corresponding allelic dosages using the `replace_strings_with_integers` function.
-#'
-#' If a genotype call in the input list is not found in the set of possible genotype
-#' calls, its allelic dosage will be set to NA.
-#'
-#' @param l A list of genotype calls, e.g., c("AG", "GG", "AA").
-#' @param alleles ref and alternative allele, e.g., c("A", "C").
+#' @param l A vector of genotype calls, e.g., `c("AG", "GG", "AA")`.
+#' @param alleles String. Reference and alternative allele separated by `/`,
+#'   e.g., `"A/G"`.
 #' @param ploidity Integer. The ploidity level of the organism.
+#' @param sep String. Separator between alleles within a call (default `""`).
 #'
-#' @return A list of integers, representing the allelic dosages for the input
-#'         genotype calls.
+#' @return A named integer vector with the dosage of the alternative allele
+#'   for each call.
 #' @export
 #'
 #' @examples
-#' genotypes <- c("AG", "GG", "AA")
-#' allele_counts <- c(A = 10, G = 20)
-#' get_allelic_dosage(genotypes, allele_counts, 2)  # Returns list(1, 2, 0)
-#'
-#' # Example with missing genotype call
-#' genotypes <- c("AG", "XX", "AA")
-#' allele_counts <- c(A = 10, G = 20)
-#' get_allelic_dosage(genotypes, allele_counts, 2)  # Returns list(1, NA, 0)
+#' get_allelic_dosage(c("AG", "GG", "AA"), "A/G", 2)  # dosages 1, 2, 0
+#' get_allelic_dosage(c("AG", "XX", "AA"), "A/G", 2)  # dosages 1, NA, 0
+#' get_allelic_dosage(c("A/G", "G/G"), "A/G", 2, sep = "/")  # dosages 1, 2
 get_allelic_dosage <- function(l, alleles, ploidity, sep = "") {
   alleles_c <- unlist(stringr::str_split(alleles, "/"))
   # All possible genotype calls
@@ -140,26 +134,20 @@ get_allelic_dosage <- function(l, alleles, ploidity, sep = "") {
 
 #' Get all possible genotype calls given a unique set of alleles
 #'
-#' This function generates all possible genotype calls for a given set of alleles
-#' and ploidity level. The genotype calls are represented as strings of characters,
-#' with each allele being a single character.
+#' Generates all ordered combinations of `alleles` for the given ploidity, so
+#' heterozygotes appear in every order (`AB` and `BA`).
 #'
-#' The function uses a recursive approach to generate all possible combinations of
-#' alleles for the specified ploidity level. For example, with two alleles "A" and "B",
-#' and a ploidity of 2 (diploid), the function would generate the following genotype
-#' calls: "AA", "AB", "BA", "BB".
-#'
-#' @param alleles List[String]. A list of unique alleles, e.g., c("A", "B", "C").
+#' @param alleles Character vector of unique alleles, e.g., `c("A", "B")`.
 #' @param ploidity Integer. The ploidity level of the organism.
+#' @param sep String. Separator placed between alleles (default `""`).
 #'
-#' @return List[String]. A list of all possible genotype calls for the given alleles
-#'         and ploidity level.
+#' @return Character vector of all possible genotype calls.
 #' @export
 #'
 #' @examples
-#' get_all_gt_calls(c("A", "B"), 2)  # Returns c("AA", "AB", "BA", "BB")
-#' get_all_gt_calls(c("A", "B", "C"), 3)  # Returns all 27 possible triploid calls
-#' get_all_gt_calls(c("A"), 1)  # Returns c("A")
+#' get_all_gt_calls(c("A", "B"), 2)  # "AA" "AB" "BA" "BB"
+#' get_all_gt_calls(c("A", "B"), 2, sep = "/")  # "A/A" "A/B" "B/A" "B/B"
+#' length(get_all_gt_calls(c("A", "B", "C"), 3))  # 27
 get_all_gt_calls <- function(alleles, ploidity, sep = "") {
   sep <- gsub("\\\\", "", sep)
   generate_calls <- function(prefix, ploidity, del = sep) {
@@ -186,23 +174,17 @@ get_all_gt_calls <- function(alleles, ploidity, sep = "") {
 
 #' Given a list of genotype calls, get the dosage of each one
 #'
-#' This function takes a list of genotype calls, an alternative allele, and the ploidity level
-#' of the organism as input, and returns a list of allelic dosages corresponding to each
-#' genotype call in the input list.
+#' @param locus Character vector of genotype calls, e.g., `c("AG", "GG", "AA")`.
+#' @param alt_allele String. The alternative allele, e.g., `"A"`.
+#' @param ploidity Integer. The ploidity level of the organism, default is 2.
+#' @param sep String. Separator between alleles within a call (default `""`).
 #'
-#' @param locus List. A list of genotype calls, e.g., c("AG", "GG", "AA").
-#' @param alt_allele String. The alternative allele, e.g., "A", "G".
-#' @param ploidity Integer. The ploidity level of the organism, default is 2 (diploid).
-#'
-#' @return A list of integers, representing the allelic dosages of the alternative allele
-#'         for each genotype call in the input list.
+#' @return A named vector with the dosage of `alt_allele` in each call.
 #' @export
 #'
 #' @examples
-#' convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # Returns list(1, 0, 2)
-#' convert_gt_to_dosage(c("AG", "GG", "AA"), "G")  # Returns list(1, 2, 0)
-#' convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # Returns list(3, 0) (triploid)
-#' convert_gt_to_dosage(c(NA, "AG"), "A")  # Returns list(NA, 1)
+#' convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # 1, 0, 2
+#' convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # 3, 0
 convert_gt_to_dosage <- function(locus, alt_allele, ploidity = 2,sep="") {
   sep <- gsub("\\\\", "", sep)
   l <- sapply(locus,
@@ -215,33 +197,23 @@ convert_gt_to_dosage <- function(locus, alt_allele, ploidity = 2,sep="") {
 
 #' Genotype call to allelic dosage of alternative allele
 #'
-#' This function takes a genotype call, an alternative allele, and the ploidity level
-#' of the organism as input, and returns the allelic dosage of the alternative allele
-#' in the genotype call.
+#' Counts the copies of `alt_allele` in one genotype call. Phased separators
+#' (`|`) and `sep` are removed first. A missing call returns `NA`.
 #'
-#' The genotype call is expected to be a string of characters representing the alleles,
-#' with each allele being a single character. For example, "AG" represents a diploid
-#' genotype with one allele being "A" and the other being "G".
+#' @param genotype_call String. Genotype call, e.g., `"AG"`, `"AAA"`.
+#' @param alt_allele String. Alternative allele, e.g., `"A"`.
+#' @param ploidity Integer. Ploidity level of the organism, default is 2.
+#' @param sep String. Separator between alleles within the call (default `""`).
 #'
-#' The allelic dosage is the count of the alternative allele in the genotype call.
-#' For example, if the genotype call is "AG" and the alternative allele is "A", the
-#' allelic dosage would be 1.
-#'
-#' If the genotype call is missing (represented as NA or an empty string), the
-#' function returns NA.
-#'
-#' @param genotype_call String. Genotype call, e.g., "AG", "AAA" (for triploid).
-#' @param alt_allele String. Alternative allele, e.g., "A", "G".
-#' @param ploidity Integer. Ploidity level of the organism, default is 2 (diploid).
-#'
-#' @return Integer. The allelic dosage of the given genotype call for the alternative allele.
+#' @return Integer. The dosage of `alt_allele`, or `NA`.
 #' @export
 #'
 #' @examples
-#' genocall_to_allelic_dosage("AG", "A")  # Returns 1
-#' genocall_to_allelic_dosage("GG", "A")  # Returns 0
-#' genocall_to_allelic_dosage("AAA", "A", 3)  # Returns 3 (triploid)
-#' genocall_to_allelic_dosage(NA, "A")  # Returns NA
+#' genocall_to_allelic_dosage("AG", "A")  # 1
+#' genocall_to_allelic_dosage("GG", "A")  # 0
+#' genocall_to_allelic_dosage("AAA", "A", 3)  # 3
+#' genocall_to_allelic_dosage("A/G", "G", sep = "/")  # 1
+#' genocall_to_allelic_dosage(NA, "A")  # NA
 genocall_to_allelic_dosage <- function(genotype_call, alt_allele, ploidity = 2,sep="") {
   if (!is.na(nchar(genotype_call))) {
     # remove separators (and normalize phasing if present)

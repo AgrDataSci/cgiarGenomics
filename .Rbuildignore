@@ -2,3 +2,9 @@
 ^\.Rproj\.user$
 ^\.positai$
 ^\.claude$
+^AGENTS\.md$
+^CLAUDE\.md$
+^SKILL\.md$
+^REFERENCE\.md$
+^llms\.txt$
+^dev$

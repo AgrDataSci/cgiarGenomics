@@ -1,3 +1,32 @@
+#' Filter, then sample loci in proportion to chromosome size
+#'
+#' Filters individuals and loci by missingness and MAF with
+#' [apply_sequence_filtering()], then draws `size` loci at random, allocated to
+#' each chromosome in proportion to its number of loci. Loci left over by
+#' rounding go to the chromosome with the most loci. Useful to thin a panel
+#' before [ibs_matrix_purrr()] or other costly steps.
+#'
+#' @param gl A genlight object with metrics from [recalc_metrics()].
+#' @param ind_miss Numeric. Keep individuals with missingness `<=` this value.
+#' @param loc_miss Numeric. Keep loci with missingness `<=` this value.
+#' @param maf Numeric. Keep loci with MAF `>` this value.
+#' @param size Integer. Number of loci to return.
+#' @param seed Integer or `NULL`. Seed for the random draw. Required, pass
+#'   `NULL` for no seed.
+#'
+#' @return A genlight object with at most `size` loci. Metrics in `other` are
+#'   not recalculated, so run [recalc_metrics()] before filtering it again.
+#'
+#' @section Known issue:
+#' Fails when two chromosomes tie for the most loci, and the MAF filter uses
+#' the values described in [get_maf()]. See `dev/audit.md`, findings F3 and M1.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' gl_small = random_select_loci(gl, ind_miss = 0.2, loc_miss = 0.2,
+#'                               maf = 0.05, size = 1000, seed = 1)
+#' }
 random_select_loci <- function(gl, ind_miss, loc_miss, maf, size, seed){
   
   if (!is.null(seed)) set.seed(seed)
@@ -45,22 +74,35 @@ random_select_loci <- function(gl, ind_miss, loc_miss, maf, size, seed){
     return(filt_gl$gl[,as.vector(out$loc_id)])
   }
   
-#' Filter function
-#' 
-#' This function generalizes the filtering functions using the parameter name
-#' and comparing in locus or individuals using the provided comparision operator.
-#' A list indicating the used thresold, if the filter was performed over individuals
-#' or locus and the indices of elements that meet the comparision.
+#' Evaluate one filter on a genlight object
 #'
-#' @param gl 
-#' @param parameter 
-#' @param threshold 
-#' @param comparison_operator 
+#' Finds the individuals or loci whose metric passes a comparison. The metric
+#' is looked up by name in `other$loc.metrics` or `other$ind.metrics`, which
+#' decides whether the filter acts on loci or on individuals. The object is not
+#' changed. [apply_sequence_filtering()] applies the result.
 #'
-#' @return
+#' @param gl A genlight object with metrics from [recalc_metrics()].
+#' @param parameter Character. Metric name, one of `maf`, `loc_miss`,
+#'   `loc_het`, `loc_Fis`, `ind_miss` or `ind_het`.
+#' @param threshold Numeric, at most 1.
+#' @param comparison_operator Character. One of `">"`, `">="`, `"<"` or `"<="`.
+#'   Elements for which `metric <operator> threshold` is `TRUE` are kept.
+#'
+#' @return A list with `param`, `operator`, `threshold`, `filter_margin`
+#'   (`"loc"` or `"ind"`), `index` (positions of the elements kept) and
+#'   `filter_out` (names of the elements removed).
+#' @seealso [apply_sequence_filtering()]
 #' @export
 #'
 #' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = recalc_metrics(new("genlight", mt, ploidy = 2))
+#' filter_gl(gl, parameter = "loc_miss", threshold = 0.2,
+#'           comparison_operator = "<=")
 filter_gl <- function(gl, parameter, threshold, comparison_operator){
   
   # Verify if parameter exist on the gl and get the margin (ind, loc)
@@ -92,6 +134,15 @@ filter_gl <- function(gl, parameter, threshold, comparison_operator){
   return(out)
 }
 
+#' Tell whether a metric applies to loci or individuals
+#'
+#' @param gl A genlight object with metrics from [recalc_metrics()].
+#' @param param_name Character. Metric name, as in [filter_gl()]. Partial
+#'   names are matched with [match.arg()].
+#'
+#' @return `"loc"` for a locus metric, `"ind"` for an individual metric.
+#'   Errors when the name matches no metric.
+#' @export
 get_parameter_margin <- function(gl, param_name){
   # Get the expected parameters
   loc_metric_names <- colnames(gl@other$loc.metrics)
@@ -107,16 +158,40 @@ get_parameter_margin <- function(gl, param_name){
   return(by)
 }
 
-#' Apply a sequence of filterings over a gl object
+#' Apply a sequence of filters to a genlight object
 #'
-#' filt_sequence named list (param = param_name, threshold: t, operator: op)
-#' @param gl 
-#' @param filt_sequence 
+#' Runs filters in the given order, recalculating metrics after each one, so
+#' every step sees the object left by the previous step. Two steps are always
+#' added at the end to remove loci and individuals with only missing data.
 #'
-#' @return
+#' @param gl A genlight object with metrics from [recalc_metrics()].
+#' @param filt_sequence A list of filter steps. Each step is a list with
+#'   elements `param`, `operator` and `threshold`, as in [filter_gl()].
+#'
+#' @return A list with `gl` (the filtered genlight object) and `filt_log` (one
+#'   [filter_gl()] result per step, named `<param>_<step>`).
+#'
+#' @section Known issue:
+#' When no element passes a step, the step is skipped and nothing is removed.
+#' Check `filt_log` for steps with an empty `index`. See `dev/audit.md`,
+#' finding F1.
+#' @seealso [filter_gl()], [get_parameter_margin()]
 #' @export
 #'
 #' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = recalc_metrics(new("genlight", mt, ploidy = 2))
+#' steps = list(
+#'   list(param = "loc_miss", operator = "<=", threshold = 0.3),
+#'   list(param = "ind_miss", operator = "<=", threshold = 0.5)
+#' )
+#' out = apply_sequence_filtering(gl, steps)
+#' out$gl
+#' names(out$filt_log)
 apply_sequence_filtering <- function(gl, filt_sequence){
   if(!rlang::is_bare_list(filt_sequence)){
     cli::cli_abort("Provide a list of filter operations in `filt_sequence`")

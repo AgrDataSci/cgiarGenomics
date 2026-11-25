@@ -33,3 +33,4 @@ Suggests:
     dartR.base,
     parallel
 Config/roxygen2/version: 8.0.0
+Roxygen: list(markdown = TRUE)
