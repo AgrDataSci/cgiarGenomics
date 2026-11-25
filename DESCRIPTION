@@ -19,21 +19,18 @@ URL: https://github.com/Breeding-Analytics/cgiarGenomics
 BugReports: https://github.com/Breeding-Analytics/cgiarGenomics/issues
 License: MIT + file LICENSE
 Depends:
-    R (>= 3.5.0),
+    R (>= 4.1.0),
     adegenet
 Imports:
     cli,
     data.table,
     dplyr,
-    ggplot2,
-    ggrepel,
     glue,
     magrittr,
     Matrix,
     methods,
     purrr,
     rlang,
-    scales,
     stats,
     stringr,
     tidyr,
@@ -43,6 +40,7 @@ Suggests:
     randomForest,
     dartR.base,
     parallel,
+    BiocManager,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0

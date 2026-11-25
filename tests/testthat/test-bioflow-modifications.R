@@ -35,7 +35,16 @@ test_that("a table with imputation rows only returns the object unchanged", {
   gl = recalc_metrics(make_gl(matrix(c(0, 1, 2, 0, 1, 2, 2, 1, 0, 0, 0, 1), nrow = 4)))
   mods = data.frame(reason = "imputation", row = 1, col = 1, value = 2)
 
-  out = apply_bioflow_modifications(gl, mods)
+  expect_warning(out <- apply_bioflow_modifications(gl, mods), "not applied")
 
   expect_equal(dim(as.matrix(out)), c(4L, 3L))
+})
+
+test_that("imputation rows are reported as not applied", {
+  gl = recalc_metrics(make_gl(matrix(c(0, 1, 2, 0, 1, 2, 2, 1, 0, 0, 0, 1), nrow = 4)))
+  mods = data.frame(reason = c("filter", "imputation"), row = c(NA, 1),
+                    col = c(2, 1), value = c(NA, 2))
+
+  expect_warning(out <- apply_bioflow_modifications(gl, mods), "not applied")
+  expect_equal(adegenet::locNames(out), c("snp1", "snp3"))
 })

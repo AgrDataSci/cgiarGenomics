@@ -186,9 +186,6 @@ get_overall_missingness <- function(gl) {
 #'
 #' @return A list with `het_ind` (one value per individual) and `het_loc`
 #'   (one value per locus).
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @seealso [get_ind_heterozygosity()], [get_loc_heterozygosity()]
 #' @export
 #'
@@ -204,8 +201,10 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
   # Boolean matrix of genotype calls where 0 > dosage < ploidy
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/adegenet::nInd(gl)
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/adegenet::nLoc(gl)
+  # share of heterozygotes among the calls that are not missing
+  called <- !is.na(mt)
+  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(called)
+  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(called)
   return(list(het_ind = het_ind, het_loc = het_loc))
 }
 
@@ -218,9 +217,6 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
 #' @param ploidy Integer. Ploidy level (default 2).
 #'
 #' @return A numeric vector with one value per locus.
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @export
 #'
 #' @examples
@@ -234,7 +230,8 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
 get_loc_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/adegenet::nInd(gl)
+  # share of heterozygotes among the calls that are not missing
+  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(!is.na(mt))
   return(het_loc)
 }
 
@@ -247,9 +244,6 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
 #' @param ploidy Integer. Ploidy level (default 2).
 #'
 #' @return A numeric vector with one value per individual.
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @export
 #'
 #' @examples
@@ -263,7 +257,8 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
 get_ind_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/adegenet::nLoc(gl)
+  # share of heterozygotes among the calls that are not missing
+  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(!is.na(mt))
   return(het_ind)
 }
 
@@ -388,7 +383,7 @@ get_overall_summary <- function(gl){
   ninds <- adegenet::nInd(gl)
   nlocs <- adegenet::nLoc(gl)
   overall_missiness <- mean(gl@other$ind.metrics$ind_miss)
-  overall_heterozygosity <- mean(gl@other$ind.metrics$ind_het)
+  overall_heterozygosity <- mean(gl@other$ind.metrics$ind_het, na.rm = T)
   overall_maf <- mean(gl@other$loc.metrics$maf, na.rm = T)
   
   out <- list(

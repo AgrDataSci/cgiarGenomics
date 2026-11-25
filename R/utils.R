@@ -4,9 +4,7 @@
 #' @param sep  Delimitator of the table cells
 #'
 #' @return Returns a dataframe
-#' @export
-#'
-#' @examples
+#' @keywords internal
 read_tabular_geno <- function(path, sep = c('\t',',')){
   
   # Validate params
@@ -52,14 +50,19 @@ split_strings <- function(l, ploidity){
 #' @return The genlight object with the removals applied.
 #'
 #' @section Known issue:
-#' Imputation rows are never applied, because the function returns before
-#' reaching them. See `dev/audit.md`, finding B2.
+#' Imputation rows are not applied. The function replays removals only and
+#' warns when the table holds imputation rows. See `dev/audit.md`, finding B2.
 #' @export
 apply_bioflow_modifications <- function(gl, modifications){
   
   # Filtering modifications
   filt_mods <- modifications %>% 
     dplyr::filter(!grepl("^imputation", reason))
+  
+  n_imp <- nrow(modifications) - nrow(filt_mods)
+  if (n_imp > 0) {
+    cli::cli_warn("{n_imp} imputation row{?s} in `modifications` {?was/were} not applied. This function replays removals only.")
+  }
   
   if (dim(filt_mods)[1] == 0) {
     return(gl)
@@ -82,48 +85,9 @@ apply_bioflow_modifications <- function(gl, modifications){
 
   filt_gl <- gl[ind_idx, loc_idx]
   return(filt_gl)
-  
-  imp_mods <- modifications %>% 
-    filter(grepl("^imputation", reason))
-  
-  mt <- as.matrix(filt_gl)
-
-  mt[cbind(imp_mods$row, imp_mods$col)] <- imp_mods$value
-  
-
-  imp_gl <- new("genlight",
-                mt,
-                loc.names = filt_gl@loc.names,
-                ind.names = filt_gl@ind.names,
-                chromosome = filt_gl@chromosome,
-                position = filt_gl@position)
-  
-  adegenet::alleles(imp_gl) <- adegenet::alleles(filt_gl)
-  imp_gl <- recalc_metrics(imp_gl)
-  
-  return(imp_gl)
 }
 
 
-
-#' Format counts with k, M and B suffixes for plot axes (internal)
-#' @noRd
-addUnits <-
-  function(n) {
-    labels <-
-      ifelse(n < 1000, n,  # less than thousands
-             ifelse(n < 1e6, paste0(round(n/1e3), 'k'),  # in thousands
-                    ifelse(n < 1e9, paste0(round(n/1e6), 'M'),  # in millions
-                           ifelse(n < 1e12, paste0(round(n/1e9), 'B'), # in billions
-                                  'too big!'))))
-    return(labels)
-  }
-
-#' Midpoint of a cut() interval label (internal)
-#' @noRd
-get_midpoint <- function(cut_label) {
-  mean(as.numeric(unlist(strsplit(gsub("\\(|\\)|\\[|\\]", "", as.character(cut_label)), ","))))
-}
 
 #' Write genlight object to VCF file
 #'
@@ -131,10 +95,12 @@ get_midpoint <- function(cut_label) {
 #'
 #' @param gl A genlight object.
 #' @param output_path String. Path to the output VCF file. It could end in `.gz` for compression.
-#' @param na_rep String. NA representation for genotypes in the VCF file. Default is "./.".
+#' @param na_rep String or `NULL`. Text written for a missing genotype. With
+#'   `NULL` (default) the text follows the ploidy of each individual, `./.` for
+#'   a diploid and `./././.` for a tetraploid.
 #'
 #' @export
-write_vcf <- function(gl, output_path, na_rep = "./.") {
+write_vcf <- function(gl, output_path, na_rep = NULL) {
   if (!inherits(gl, "genlight")) {
     cli::cli_abort("`gl` must be a genlight object.")
   }
@@ -314,9 +280,10 @@ check_method_args <- function(dots, allowed, required, method) {
 #'   three individuals found in `gl`), `n_markers`, `n_evaluated` (loci typed
 #'   in all three), `n_missing`, `n_errors` and `error_rate`.
 #'
-#' @section Known issue:
-#' Opposite homozygous parents (0 and 2) with a homozygous offspring are not
-#' counted as errors, so the count is a lower bound. See `dev/audit.md`,
+#' @section Scope:
+#' The rule is the conservative one for later generations. Opposite
+#' homozygous parents (0 and 2) with a homozygous offspring are not counted,
+#' so for direct F1 trios the count is a lower bound. See `dev/audit.md`,
 #' finding P2.
 #' @export
 #'
