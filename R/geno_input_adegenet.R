@@ -1,20 +1,9 @@
 
-#' read_genolcsv
+#' Read a genotype CSV (unfinished, internal)
 #'
-#' This function reads a csv file (uncompressed) and converts it into a genlight object.
-#' In the csv file SNPs are in rows and Individuals in columns
-#'
-#' @param path Path to the csv file (uncompressed).
-#' @param ploidity Integer, ploidity level of the organism (default: 2).
-#' @param sep String, separator that divides the alleles (default: "").
-#'
-#' @return A genlight object.
-#' @export
-#'
-#' @examples
-#' read_genolcsv("path/to/csv/file.csv")
-#' read_genolcsv("path/to/csv/file.csv", ploidity = 4)
-#' read_genolcsv("path/to/csv/file.csv", sep = "|")
+#' Not usable in this version, as it references an undefined object. Kept for
+#' reference only. See `dev/audit.md`, finding R8.
+#' @noRd
 read_genolcsv <- function(path,
                         snp_id,
                         chr_name,
@@ -114,19 +103,30 @@ read_genolcsv <- function(path,
 
 #' read_hapmap
 #'
-#' This function reads a hapmap file (uncompressed) and converts it into a genlight object.
+#' Reads a tab-separated hapmap file (uncompressed) and converts it into a
+#' genlight object of alternative allele dosages. The first allele in the
+#' `alleles` column is taken as reference and the second as alternative.
+#' Markers that are not bi-allelic SNPs, or share a position with another
+#' marker, are removed. Samples start at column 12.
 #'
 #' @param path Path to the hapmap file (uncompressed).
 #' @param ploidity Integer, ploidity level of the organism (default: 2).
-#' @param sep String, separator that divides the alleles (default: "").
+#' @param sep String, separator between alleles in a call, one of `""`
+#'   (default, as in `AG`), `"/"` or `"|"`.
 #'
-#' @return A genlight object.
+#' @return A genlight object with metrics from [recalc_metrics()].
+#'
+#' @section Known issue:
+#' With `sep = "/"` or `"|"` the ploidy check counts the separator and aborts.
+#' Single-letter IUPAC calls (`R`, `Y`) become missing. See `dev/audit.md`,
+#' findings R4 and R6.
 #' @export
 #'
 #' @examples
-#' read_hapmap("path/to/hapmap/file.txt")
-#' read_hapmap("path/to/hapmap/file.txt", ploidity = 4)
-#' read_hapmap("path/to/hapmap/file.txt", sep = "|")
+#' \dontrun{
+#' gl = read_hapmap("tests/hmp_fmt/diploid_hmp.txt", ploidity = 2)
+#' gl4 = read_hapmap("tests/hmp_fmt/tetraploid_hmp.txt", ploidity = 4)
+#' }
 read_hapmap <- function(path, ploidity = 2, sep = "") {
   # Validate arguments
   if (!file.exists(path)){
@@ -222,22 +222,30 @@ read_hapmap <- function(path, ploidity = 2, sep = "") {
 
 #' read_vcf
 #'
-#' This function reads a VCF file (compressed or uncompressed) and converts it into a genlight object.
+#' Reads a VCF file (compressed or uncompressed) and converts it into a
+#' genlight object of alternative allele dosages. Markers that are not
+#' bi-allelic SNPs, or share a position with another marker, are removed.
+#' Requires the suggested package vcfR.
 #'
 #' @param path String. Path to the VCF file. It could be compressed.
 #' @param ploidity Integer. Ploidity level of the organism. (Default = 2)
-#' @param na_reps Vector. A vector containing the NA representations of genotype calls (default: empty).
+#' @param na_reps Vector. Genotype strings to treat as missing
+#'   (default `c("-", "./.")`). vcfR already converts fully missing calls.
+#' @param sep String. Separator between alleles in the GT field. Use `"/"` for
+#'   unphased calls (default) and `"\\|"` for phased calls.
 #'
-#' @return A genlight object.
+#' @return A genlight object with metrics from [recalc_metrics()].
+#'
+#' @section Known issue:
+#' A file that mixes phased and unphased calls cannot be read with a single
+#' `sep`. See `dev/audit.md`, finding R5.
 #' @export
 #'
 #' @examples
-#' fl = "https://github.com/Breeding-Analytics/cgiarGenomics/raw/main/tests/vcf_fmt/diploid.vcf.gz"
-#' tempfl <- tempfile(pattern = 'diploid', fileext = '.vcf.gz')
-#' download.file(fl, destfile = tempfl)
-#' dat.dose.vcf = read_vcf(tempfl, ploidity = 2)
-#' print(dat.dose.vcf)
-#' plot(dat.dose.vcf)
+#' \dontrun{
+#' gl = read_vcf("tests/vcf_fmt/diploid.vcf.gz", ploidity = 2)
+#' gl
+#' }
 read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
   
   require_optional("vcfR")
@@ -305,19 +313,29 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
 
 #' read_DArTSeq_SNP
 #'
-#' This function reads a DArTSeq SNP dataset from a CSV file and converts it into a genlight object using
-#' the DartR library reading functions.
+#' Reads a standard DArTSeq SNP report (CSV) with
+#' `dartR.base::gl.read.dart()` and moves chromosome and position from the
+#' locus metadata into the genlight slots. Unmapped SNPs are removed. Diploid
+#' only. Requires the suggested package dartR.base.
 #'
 #' @param path Path to the DArTSeq CSV file.
 #' @param snp_id Column name of the SNP ID data in the CSV file.
 #' @param chr_name Column name of the chromosome where the SNP is located in the CSV file.
 #' @param pos_name Column name of the physical position where the SNP is located in the CSV file.
 #'
-#' @return A genlight object with mapped SNPs.
+#' @return A genlight object with mapped SNPs and metrics from [recalc_metrics()].
+#'
+#' @section Known issue:
+#' When every SNP is mapped, every locus is removed. When some are unmapped,
+#' positions may be taken from the wrong rows. See `dev/audit.md`, findings R2
+#' and R3.
 #' @export
 #'
 #' @examples
-#' read_DArTSeq_SNP("path/to/dartseq/file.csv", snp_id = "SnpID", chr_name = "Chr", pos_name = "Position")
+#' \dontrun{
+#' read_DArTSeq_SNP("tests/DartSeq_fmt/DartSeq/DArTSeq_CB_snp.csv",
+#'                  snp_id = "AlleleID", chr_name = "Chrom", pos_name = "ChromPos")
+#' }
 read_DArTSeq_SNP <- function(path, snp_id, chr_name, pos_name) {
   
   require_optional("dartR.base")
@@ -370,16 +388,17 @@ read_DArTSeq_SNP <- function(path, snp_id, chr_name, pos_name) {
 
 #' extract_dart_gt
 #'
-#' @param data Dataframe. Dataframe with Allelic dosage data
+#' Extracts the genotype block from a DArT report read without a header, and
+#' names its columns by sample.
+#'
+#' @param data Dataframe. DArT report read with `header = FALSE`.
 #' @param sample.name.row Integer. Row number which the sample names are (default = 2)
-#' @param first.data.row Integer. Row number of the first genotype call
-#' @param first.data.col Integer. Col number of the first genotype call
+#' @param first.data.row Integer. Row number of the first genotype call (default = 9)
+#' @param first.data.col Integer. Col number of the first genotype call (default = 6)
 #'
-#' @return Dataframe. Returns a Dataframe with the allelic dosage data converted
-#' to integers and the column names as the samples.
+#' @return Dataframe. The genotype block, with the sample names as column
+#'   names. Values are kept as read.
 #' @export
-#'
-#' @examples
 extract_dart_gt <- function(data,
                             sample.name.row= 2,
                             first.data.row = 9,
@@ -414,20 +433,21 @@ extract_dart_gt <- function(data,
 }
 
 #' read_one_row_dart_gt_data
-#' 
-#' This function takes as input a path a DArT file where each variant is coded
-#' in a single line. It splits the metadata and the allelic dosages.
 #'
-#' @param path 
-#' @param sample.name.row 
-#' @param first.data.row 
-#' @param first.data.col 
-#' @param snp_id_col 
+#' Reads a DArT report where each variant takes a single row, such as a DArTag
+#' dosage report, and splits it into genotype calls and marker metadata.
 #'
-#' @return
+#' @param path Path to the DArT CSV file.
+#' @param sample.name.row Integer. Row holding the sample names (default 2).
+#' @param first.data.row Integer. First row with genotype data (default 9).
+#'   The row above it must hold the metadata column names.
+#' @param first.data.col Integer. First column with genotype data (default 6).
+#' @param snp_id_col Character. Name of the metadata column with marker IDs.
+#'
+#' @return A list with `gt` (a data frame of integer dosages, samples in
+#'   columns, plus a `marker_id` column) and `dosage_meta` (the metadata
+#'   columns).
 #' @export
-#'
-#' @examples
 read_one_row_dart_gt_data <- function(path,
                                       sample.name.row= 2,
                                       first.data.row = 9,
@@ -463,6 +483,15 @@ read_one_row_dart_gt_data <- function(path,
   return(list(gt = geno, dosage_meta = meta_data))
 }
 
+#' Parse reference and alternative alleles from a DArTag counts file (internal)
+#'
+#' Pivots the allele sequences of each marker to wide format and finds the
+#' single base where reference and alternative tags differ with
+#' `compare_tags()`.
+#'
+#' @return A data frame with one row per marker, the tag sequences and the
+#'   columns `ref_allele` and `alt_allele`.
+#' @noRd
 parse_counts_metadata <- function(path,
                                   sample.name.row= 7,
                                   first.data.row = 9,
@@ -513,6 +542,45 @@ parse_counts_metadata <- function(path,
   return(wide_alleles)
 }
 
+#' Read a DArTag dosage report with its allele counts file
+#'
+#' Builds a genlight object from the two files DArT delivers for DArTag
+#' panels, which also work for polyploids. Dosages come from the dosage
+#' report. Reference and alternative alleles come from the tag sequences in
+#' the counts file, where the single differing base defines the SNP. Markers
+#' without allele sequences are removed with a warning.
+#'
+#' @param dosage_path Path to the dosage report (CSV).
+#' @param counts_path Path to the allele match counts file (CSV), collapsed.
+#' @param ploidity Integer. Ploidy of the organism.
+#' @param sample.name.row Integer. Row with sample names (default 7).
+#' @param first.data.row Integer. First data row (default 9).
+#' @param first.data.col Integer. First data column (default 6).
+#' @param snp_id_col_dosage Character. Marker ID column in the dosage report
+#'   (default `"MarkerID"`).
+#' @param snp_id_col_count Character. Marker ID column in the counts file
+#'   (default `"CloneID"`).
+#' @param allele_id_col Character. Allele ID column in the counts file
+#'   (default `"AlleleID"`).
+#' @param allele_sep Regular expression separating marker and allele type in
+#'   `allele_id_col` (default `"\\|"`).
+#' @param allele_sequence_col Character. Tag sequence column (default
+#'   `"AlleleSequence"`).
+#' @param ref_name,alt_name Character. Allele type labels for reference and
+#'   alternative tags (default `"Ref"` and `"Alt"`).
+#' @param dosage_col_chr,dosage_col_pos Character. Chromosome and position
+#'   columns in the dosage report (default `"Chrom"` and `"ChromPos"`).
+#'
+#' @return A genlight object with metrics from [recalc_metrics()].
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' gl = read_DArTag_count_dosage(
+#'   dosage_path = "tests/DartSeq_fmt/DArT_TAG_sweet_potato/DP23-8340_Allele_Dose_Report.csv",
+#'   counts_path = "tests/DartSeq_fmt/DArT_TAG_sweet_potato/DP23-8340_Allele_match_counts_collapsed.csv",
+#'   ploidity = 6)
+#' }
 read_DArTag_count_dosage <- function(dosage_path,
                                      counts_path,
                                      ploidity,
@@ -634,6 +702,12 @@ read_DArTag_count_dosage <- function(dosage_path,
   return(gl)
 }
 
+#' Find the single SNP between reference and alternative tags (internal)
+#'
+#' @param ref,alt Character. Tag sequences of equal length.
+#' @return A named character vector with `ref_allele` and `alt_allele`, or `N`
+#'   for both when the tags differ at zero or several bases.
+#' @noRd
 compare_tags <- function(ref, alt){
   bases <- c("A", "C", "G", "T")
   hap.ref <- unlist(strsplit(ref, split = ""))

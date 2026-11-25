@@ -1,15 +1,17 @@
-#' Imputation with allele frequency
-#' 
-#' Assuming a bi-allelic marker, using the observed allelic frequency for one allele
-#' is sampled the genotype call for any ploidity level
+#' Draw one genotype call from an allele frequency
 #'
-#' @param q_frq 
-#' @param ploidity 
+#' Draws each of the `ploidity` allele copies independently, with probability
+#' `q_frq` of being the alternative allele, and returns their sum.
 #'
-#' @return
+#' @param q_frq Numeric between 0 and 1. Frequency of the alternative allele.
+#' @param ploidity Integer. Ploidy level (default 2).
+#'
+#' @return Numeric. A dosage between 0 and `ploidity`.
 #' @export
 #'
 #' @examples
+#' set.seed(1)
+#' i_freq_impute(0.3, ploidity = 2)
 i_freq_impute <- function(q_frq, ploidity = 2){
   if(!rlang::is_integerish(ploidity)){
     cli::cli_abort("`ploidity` is not an integer: {ploidity}")  
@@ -23,6 +25,10 @@ i_freq_impute <- function(q_frq, ploidity = 2){
   return(dosage)
 }
 
+#' Frequency imputation of all missing calls (internal)
+#'
+#' @return A list of linear matrix indices, named by imputed dosage.
+#' @noRd
 freq_impute <- function(gl, mt, ploidity){
   mt <- as.matrix(gl)
   # Get the allelic frequencies
@@ -39,6 +45,12 @@ freq_impute <- function(gl, mt, ploidity){
   return(split(idx_na, imp))
 }
 
+#' Write imputed dosages into a matrix (internal)
+#'
+#' @param mt Dosage matrix.
+#' @param imp_dict List of linear indices named by dosage.
+#' @return The matrix with imputed values.
+#' @noRd
 apply_imputation <- function(mt, imp_dict){
   for (dosage in names(imp_dict)) {
     # Convert the list name to a numeric value
@@ -135,6 +147,7 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
 #' For each marker with missing data, uses flanking markers as predictors.
 #' Respects chromosome boundaries to avoid using markers from different chromosomes.
 #' Markers are processed in parallel using the specified number of cores.
+#' Predictors are first filled by frequency imputation.
 #'
 #' @param gl genlight object
 #' @param ploidity Ploidy level (default=2)
@@ -144,6 +157,11 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
 #' @param nthreads Number of parallel threads. Default uses get_default_beagle_threads() (half cores, max 4).
 #'
 #' @return List where names are dosage values and elements are linear indices of NA positions
+#'
+#' @section Known issue:
+#' Predictions are factors, and their integer codes are written as dosages, so
+#' imputed values are shifted. Do not use `method = "random_forest"` until this
+#' is fixed. See `dev/audit.md`, finding I1.
 #' @keywords internal
 rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, nthreads = NULL) {
   
@@ -294,23 +312,46 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
 
 
 #' Impute a gl object
-#'  
-#' Impute a genlight object using frequency or random forest method.
-#' Returns a list with imputed genlight object and imputation log.
+#'
+#' Fills missing dosages with one of three methods and returns a new genlight
+#' object with recalculated metrics. Loci with no data are removed first, with
+#' a warning.
+#'
+#' * `"frequency"` draws each missing call from the allele frequency of its
+#'   locus with [i_freq_impute()]. Fast, ignores linkage.
+#' * `"random_forest"` predicts each missing call from flanking markers on the
+#'   same chromosome. Extra arguments `nflank`, `ntree`, `seed`, `nthreads`.
+#'   Needs the suggested package randomForest.
+#' * `"beagle"` runs Beagle 5 on a temporary VCF, diploids only, see
+#'   [impute_beagle()]. Extra arguments `jre_path`, `beagle_path`, `memory`,
+#'   `burnin`, `iterations`, `seed`, `nthreads`.
 #'
 #' @param gl genlight object
-#' @param ploidity ploidy level (default=2)
-#' @param method Imputation method: 'frequency' or 'random_forest' (default='frequency')
-#' @param nflank Number of flanking markers for RF method (default=100)
-#' @param ntree Number of trees for RF method (default=100)
-#' @param seed Optional seed for reproducibility (RF method)
+#' @param ploidity Integer. Ploidy level (default 2). Must match the object.
+#' @param method Character. `"frequency"`, `"random_forest"` or `"beagle"`.
+#'   There is no default.
+#' @param ... Named, method-specific arguments listed above. Unknown names are
+#'   an error.
 #'
 #' @return List with elements:
 #'   - gl: imputed genlight object
 #'   - log: imputation dictionary (imputed positions grouped by dosage)
+#'
+#' @section Known issue:
+#' `method = "random_forest"` writes wrong dosages, and the reported count of
+#' missing calls is too low. See `dev/audit.md`, findings I1 and I6.
 #' @export
 #'
 #' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' set.seed(1)
+#' imp = impute_gl(gl, ploidity = 2, method = "frequency")
+#' as.matrix(imp$gl)
 impute_gl <- function(gl, ploidity = 2, method, ...){
   
   loci_all_nas <- adegenet::glNA(gl)/ploidity == adegenet::nInd(gl)
@@ -386,17 +427,30 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
 }
 
 
-#' Mask a fraction of genotype calls for measure the 
+#' Mask a fraction of genotype calls for measure the
 #' accuracy of an imputation method
 #'
 #' @param gl A genlight instance
-#' @param fraction percentage of data to mask [0 - 1], default = 0.1
+#' @param fraction Share of calls to mask, between 0 and 1 (default 0.1)
 #'
 #' @return A genlight instance where the genotype matrix have as NA
 #' the given fraction of missing data
+#'
+#' @section Known issue:
+#' The result keeps chromosomes only, without names, positions or alleles, and
+#' masked cells may include calls that were already missing. See
+#' `dev/audit.md`, finding I3.
 #' @export
 #'
 #' @examples
+#' mt = matrix(c(0, 1, 2, 1,
+#'               2, 2, 1, 0,
+#'               0, 1, 1, 2),
+#'             nrow = 4)
+#' gl = new("genlight", mt, ploidy = 2)
+#' set.seed(1)
+#' masked = set_fraction_na(gl, fraction = 0.25)
+#' as.matrix(masked)
 set_fraction_na <- function(gl, fraction = 0.1) {
     # Ensure fraction is between 0 and 1
     if (!is.numeric(fraction) || fraction < 0 || fraction > 1) {
@@ -427,13 +481,17 @@ set_fraction_na <- function(gl, fraction = 0.1) {
 #' against an imputed gl. Measure the accuracy of the imputation
 #' process comparing the reference gt with imputed gt
 #'
-#' @param ref_gl Rreference genlight instance
-#' @param imp_gl Imputed genlight instance
+#' @param ref_gl Reference genlight instance
+#' @param imp_gl Imputed genlight instance, with the same individuals and loci
+#'   in the same order
 #'
-#' @return
+#' @return A numeric vector with one value per locus, the share of reference
+#'   calls that the imputed object reproduces.
+#'
+#' @section Known issue:
+#' All non-missing reference calls are scored, not only the masked ones, so
+#' accuracy is inflated. See `dev/audit.md`, finding I2.
 #' @export
-#'
-#' @examples
 get_accuracy <- function(ref_gl, imp_gl){
   # Get the gt matix of the two gls
   ref_m <- as.matrix(ref_gl)

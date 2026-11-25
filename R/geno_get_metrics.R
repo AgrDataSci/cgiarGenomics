@@ -1,4 +1,31 @@
 # Purity Metrics ----------------------------------------------------------
+#' Identity-by-state matrix from allelic dosages
+#'
+#' Computes pairwise identity by state (IBS) between all individuals of a
+#' genlight object. For each locus typed in both individuals, IBS is
+#' `1 - |dosage_x - dosage_y| / ploidy`, and the pair score is the mean over
+#' those loci. Used to check purity and identity of samples.
+#'
+#' @param gl A genlight object.
+#' @param ploidy Integer. Ploidy level used to scale dosage differences.
+#'
+#' @return A list with two square matrices named by individual.
+#'   `ibs` holds the mean IBS score (diagonal set to 1), and `overlap` holds
+#'   the number of loci typed in both individuals.
+#'
+#' @details Runs in pure R and evaluates every pair twice, so time grows with
+#'   the square of the number of individuals. Use a subset of loci for large
+#'   panels, for example with [random_select_loci()].
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' ibs_matrix_purrr(gl, ploidy = 2)
 ibs_matrix_purrr <- function(gl, ploidy) {
   G <- t(as.matrix(gl))
   cols <- as.data.frame(G, check.names = FALSE)
@@ -21,6 +48,12 @@ ibs_matrix_purrr <- function(gl, ploidy) {
   return(list(ibs = score_mat, overlap = overlap_mat))
 }
 
+#' IBS score between two dosage vectors (internal)
+#'
+#' @param x,y Numeric dosage vectors of equal length.
+#' @param ploidy Ploidy level.
+#' @return A list with `score` (mean IBS) and `overlap` (loci typed in both).
+#' @noRd
 ibs_dosage <- function(x, y, ploidy) {
   if (length(x) != length(y)) stop("x and y must have the same length")
   if (length(ploidy) != 1 || !is.numeric(ploidy) || ploidy <= 0) {
@@ -57,9 +90,13 @@ ibs_dosage <- function(x, y, ploidy) {
 #' @export
 #'
 #' @examples
-#' data(example_genlight)
-#' loc_miss <- get_loc_missing(example_genlight)
-#' head(loc_miss)
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_loc_missing(gl)
 get_loc_missing <- function(gl) {
   # Get the number of occurrences of NAs (missing data) for each marker
   NA_counts <- adegenet::glNA(gl)
@@ -84,9 +121,13 @@ get_loc_missing <- function(gl) {
 #' @export
 #'
 #' @examples
-#' data(example_genlight)
-#' ind_miss <- get_ind_missing(example_genlight)
-#' head(ind_miss)
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_ind_missing(gl)
 get_ind_missing <- function(gl) {
   # Convert the genlight object to a matrix and identify missing genotype calls
   mt <- is.na(as.matrix(gl))
@@ -111,9 +152,13 @@ get_ind_missing <- function(gl) {
 #' @export
 #'
 #' @examples
-#' data(example_genlight)
-#' overall_miss <- get_overall_missingness(example_genlight)
-#' print(overall_miss)
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_overall_missingness(gl)
 get_overall_missingness <- function(gl) {
   # Convert the genlight object to a matrix
   mt <- as.matrix(gl)
@@ -130,6 +175,31 @@ get_overall_missingness <- function(gl) {
 
 # Heterozygosity metrics --------------------------------------------------
 
+#' Observed heterozygosity by individual and by locus
+#'
+#' A call is heterozygous when its dosage is above 0 and below `ploidy`. The
+#' function returns the share of heterozygous calls per individual and per
+#' locus in one pass.
+#'
+#' @param gl A genlight object.
+#' @param ploidy Integer. Ploidy level (default 2).
+#'
+#' @return A list with `het_ind` (one value per individual) and `het_loc`
+#'   (one value per locus).
+#' @section Known issue:
+#' The denominator counts missing calls, so heterozygosity is underestimated
+#' when data are missing. See `dev/audit.md`, finding M2.
+#' @seealso [get_ind_heterozygosity()], [get_loc_heterozygosity()]
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_heterozygosity_metrics(gl, ploidy = 2)
 get_heterozygosity_metrics <- function(gl, ploidy = 2){
   # Boolean matrix of genotype calls where 0 > dosage < ploidy
   mt <- as.matrix(gl)
@@ -139,6 +209,28 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
   return(list(het_ind = het_ind, het_loc = het_loc))
 }
 
+#' Observed heterozygosity by locus
+#'
+#' Share of individuals with a heterozygous call (dosage above 0 and below
+#' `ploidy`) at each locus.
+#'
+#' @param gl A genlight object.
+#' @param ploidy Integer. Ploidy level (default 2).
+#'
+#' @return A numeric vector with one value per locus.
+#' @section Known issue:
+#' The denominator counts missing calls, so heterozygosity is underestimated
+#' when data are missing. See `dev/audit.md`, finding M2.
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_loc_heterozygosity(gl)
 get_loc_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
@@ -146,6 +238,28 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
   return(het_loc)
 }
 
+#' Observed heterozygosity by individual
+#'
+#' Share of loci with a heterozygous call (dosage above 0 and below
+#' `ploidy`) in each individual.
+#'
+#' @param gl A genlight object.
+#' @param ploidy Integer. Ploidy level (default 2).
+#'
+#' @return A numeric vector with one value per individual.
+#' @section Known issue:
+#' The denominator counts missing calls, so heterozygosity is underestimated
+#' when data are missing. See `dev/audit.md`, finding M2.
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_ind_heterozygosity(gl)
 get_ind_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
@@ -154,12 +268,45 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 }
 
 
+#' Minor allele frequency by locus
+#'
+#' Computes the frequency of the alternative allele with
+#' [adegenet::glMean()] and folds it to the minor allele.
+#'
+#' @param gl A genlight object.
+#' @param ploidy Integer. Ploidy level (default 2).
+#'
+#' @return A numeric vector with one value per locus, between 0 and 0.5.
+#'
+#' @section Known issue:
+#' [adegenet::glMean()] already returns allele frequencies, and this function
+#' divides them by `ploidy` again. In version 1.0.2 the stored MAF is half the
+#' true value in diploids, and a locus fixed for the alternative allele gets
+#' 0.5. Every MAF filter inherits the error. See `dev/audit.md`, finding M1.
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' get_maf(gl)
 get_maf <- function(gl, ploidy = 2){
   alf <- adegenet::glMean(gl)*(1/ploidy)
   maf <- ifelse(alf > 0.5, 1 - alf, alf)
   return(maf)
 }
 
+#' Per-locus inbreeding coefficient (internal)
+#'
+#' `1 - Ho / He` with `He = 2pq`, from the metrics stored by
+#' [recalc_metrics()]. Valid for diploids only.
+#'
+#' @param gl A genlight object with `other$loc.metrics`.
+#' @return A numeric vector with one value per locus.
+#' @noRd
 get_inbreeding <- function(gl){
   p <- 1 - gl@other$loc.metrics$maf
   he <- 2 * gl@other$loc.metrics$maf * p
@@ -167,6 +314,36 @@ get_inbreeding <- function(gl){
   return(Fis)
 }
 
+#' Recalculate locus and individual metrics
+#'
+#' Rebuilds the two tables that filtering relies on and stores them in the
+#' `other` slot. Every reader and every filtering or imputation step calls it,
+#' so metrics always describe the current object.
+#'
+#' `other$loc.metrics` holds `maf`, `loc_miss`, `loc_het` and `loc_Fis`, one
+#' row per locus. `other$ind.metrics` holds `ind_miss` and `ind_het`, one row
+#' per individual.
+#'
+#' @param gl A genlight object.
+#'
+#' @return The same genlight object with updated `other$loc.metrics` and
+#'   `other$ind.metrics`.
+#'
+#' @section Known issue:
+#' `maf` and `loc_Fis` inherit the error described in [get_maf()], and
+#' `loc_Fis` assumes a diploid. See `dev/audit.md`, findings M1 and M3.
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' gl = recalc_metrics(gl)
+#' gl@other$loc.metrics
+#' gl@other$ind.metrics
 recalc_metrics <- function(gl){
 
   gl@other$loc.metrics <- data.frame(
@@ -186,6 +363,27 @@ recalc_metrics <- function(gl){
 }
 
 
+#' Overall summary of a genlight object
+#'
+#' Summarises the metrics stored by [recalc_metrics()]. Run that function first
+#' if the object did not come from a cgiarGenomics reader.
+#'
+#' @param gl A genlight object with `other$loc.metrics` and `other$ind.metrics`.
+#'
+#' @return A list with `nind` (individuals), `nloc` (loci), `ov_miss` (mean
+#'   individual missingness), `ov_het` (mean individual heterozygosity) and
+#'   `ov_maf` (mean MAF).
+#' @export
+#'
+#' @examples
+#' mt = matrix(c(0, 1, 2, NA,
+#'               2, 2, 1, 0,
+#'               0, 1, NA, 2),
+#'             nrow = 4,
+#'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
+#' gl = recalc_metrics(gl)
+#' get_overall_summary(gl)
 get_overall_summary <- function(gl){
   ninds <- adegenet::nInd(gl)
   nlocs <- adegenet::nLoc(gl)

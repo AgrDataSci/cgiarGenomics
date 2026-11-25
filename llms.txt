@@ -1,0 +1,18 @@
+# cgiarGenomics
+
+> R package that reads SNP marker data (hapmap, VCF, DArTSeq, DArTag), converts it to allele dosages in an adegenet genlight object, and runs quality control, filtering, imputation and VCF export for diploid and polyploid crops. It is the genomic data engine of Bioflow, the CGIAR breeding analytics pipeline.
+
+Start with AGENTS.md. It maps tasks to functions and lists the known issues of version 1.0.2 with workarounds.
+
+## Docs
+
+- [AGENTS.md](https://github.com/Breeding-Analytics/cgiarGenomics/blob/main/AGENTS.md): instructions for AI agents, function choice, known issues, rules for changing the package
+- [SKILL.md](https://github.com/Breeding-Analytics/cgiarGenomics/blob/main/SKILL.md): lightweight skill with the standard workflow
+- [REFERENCE.md](https://github.com/Breeding-Analytics/cgiarGenomics/blob/main/REFERENCE.md): every function with arguments and return values
+- [README.md](https://github.com/Breeding-Analytics/cgiarGenomics/blob/main/README.md): overview, installation, supported formats
+- [dev/audit.md](https://github.com/Breeding-Analytics/cgiarGenomics/blob/main/dev/audit.md): code audit of November 2026 with findings and fix plan
+
+## Optional
+
+- [Bioflow](https://github.com/Breeding-Analytics/bioflow): the breeding analytics pipeline that uses this package
+- [Example data](https://github.com/Breeding-Analytics/cgiarGenomics/tree/main/tests): hapmap, VCF, DArTSeq and DArTag files

@@ -1,3 +1,8 @@
+#' Legacy QC plot (internal, not exported)
+#'
+#' Written for an earlier object layout (`geno_obj$geno`, a genind object)
+#' and not used by the current readers. See `dev/audit.md`, finding D5.
+#' @noRd
 plot_missingnes_by_marker <- function(geno_obj, bin_size = 0.01){
   gi <- geno_obj$geno
   snp_rates <- adegenet::propTyped(gi, by = 'loc')
@@ -30,6 +35,11 @@ plot_missingnes_by_marker <- function(geno_obj, bin_size = 0.01){
   return(out)
 }
 
+#' Legacy QC plot (internal, not exported)
+#'
+#' Written for an earlier object layout (`geno_obj$geno`, a genind object)
+#' and not used by the current readers. See `dev/audit.md`, finding D5.
+#' @noRd
 plot_MAF <- function(geno_obj,bin_size = 0.01){
   gi <- geno_obj$geno
   snp_rates <- adegenet::minorAllele(gi)
@@ -63,6 +73,11 @@ plot_MAF <- function(geno_obj,bin_size = 0.01){
   return(out)
 }
 
+#' Legacy QC plot (internal, not exported)
+#'
+#' Written for an earlier object layout (`geno_obj$geno`, a genind object)
+#' and not used by the current readers. See `dev/audit.md`, finding D5.
+#' @noRd
 plot_overall_missingness <- function(geno_obj){
 
   gi <- geno_obj$geno
