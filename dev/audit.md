@@ -15,7 +15,7 @@ The tests were written against the fixed code. They were not run against version
 | Still open | Finding |
 |---|---|
 | `loc_Fis` assumes a diploid at every ploidy | M3 |
-| Metrics and IBS are slow and memory-hungry on large panels | M4 |
+| Metrics build dense matrices on large panels | M4 |
 | Mendelian errors use the later-generation rule only | P2 |
 | `apply_bioflow_modifications()` does not replay imputation | B2 |
 | Loci removed for having no data are not listed in the imputation log | I6 |
@@ -76,7 +76,7 @@ The full list follows, grouped by area, with file and line.
 
 **M3. Fis assumes diploid Hardy-Weinberg (Medium, confirmed, open).** `get_inbreeding()` uses `2pq` at line 165 for every ploidy, and inherits the MAF error from M1. For polyploids, the expected heterozygosity is `1 - p^k - q^k`, where `k` is ploidy. Report Fis as diploid only until that is in place.
 
-**M4. Metrics are slow on large panels (Low, confirmed, open).** `recalc_metrics()` converts the genlight to a dense matrix three times per call, and filtering calls it after every step. `ibs_matrix_purrr()` computes each pair twice in pure R. Convert once per call, and compute only the upper triangle.
+**M4. Metrics are slow on large panels (Low, confirmed, partly fixed in PR #5).** `ibs_matrix_purrr()` now uses matrix products. `recalc_metrics()` still builds dense matrices. `recalc_metrics()` converts the genlight to a dense matrix three times per call, and filtering calls it after every step. `ibs_matrix_purrr()` computes each pair twice in pure R. Convert once per call, and compute only the upper triangle.
 
 ## Filtering
 

@@ -15,16 +15,7 @@
 "_PACKAGE"
 
 #' @import adegenet
-#' @import stringr
-#' @importFrom magrittr %>%
 #' @importFrom methods new
 #' @importFrom stats complete.cases na.omit predict setNames
 #' @importFrom utils hasName read.csv write.table
 NULL
-
-# Column names used with dplyr and tidyr inside functions
-utils::globalVariables(c(
-  ".", "CHROM", "ID", "POS", "REF", "ALT", "alleles", "allele_type", "alt",
-  "chrom", "col", "designation_id", "id", "pos", "q", "reason", "ref", "row",
-  "total"
-))

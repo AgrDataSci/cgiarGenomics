@@ -1,6 +1,6 @@
 # Function reference
 
-Every exported function of cgiarGenomics 1.0.3, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
+Every exported function of cgiarGenomics 1.0.4, grouped by the step of the workflow it serves, plus the documented helpers marked *internal*. Call internal helpers with `cgiarGenomics:::`, since they may change without notice. The help pages in R (`?read_vcf`) hold the same content in more detail. Functions marked ⚠ have a known issue described in [`dev/audit.md`](dev/audit.md), with the finding number in brackets.
 
 All readers return a [genlight](https://github.com/thibautjombart/adegenet) object of alternative allele dosages, with individuals in rows and loci in columns. Each one stores quality metrics in the `other` slot, which the filtering functions read.
 
@@ -74,7 +74,7 @@ Method-specific arguments go through `...` by name. Random forest takes `nflank`
 
 | Function | What it does |
 |---|---|
-| `ibs_matrix_purrr(gl, ploidy)` | Pairwise identity by state and the number of loci shared, for purity and identity checks. Slow on many individuals. |
+| `ibs_matrix_purrr(gl, ploidy)` | Pairwise identity by state and the number of loci shared, for purity and identity checks. Uses matrix products in base R, despite the name. |
 | `merge_duplicate_inds(gl, sample_dictionary)` | Collapses replicate samples of one designation by majority call, with ties set to missing. Individuals take the name of their designation. Positions, alleles and metrics are kept. |
 | `get_mendelian_error_counts(gl, trios)` | Counts Mendelian inconsistencies per trio with the conservative rule for later generations. Diploid only. ⚠ (P2, a lower bound for F1 trios) |
 

@@ -1,3 +1,18 @@
+# cgiarGenomics 1.0.4
+
+## Fewer dependencies
+
+* The package now imports cli, data.table, adegenet, methods, stats and utils only. dplyr, tidyr, purrr, stringr, magrittr, Matrix, rlang and glue are no longer needed. Each call was rewritten in base R, with the same results.
+* Assignments in the package code use `=` instead of `<-`.
+
+## Faster
+
+* `ibs_matrix_purrr()` computes identity by state with matrix products instead of a loop over every pair, which ran each pair twice. Results are unchanged for whole dosages. Other dosages fall back to a loop that visits each pair once. The name is kept for compatibility.
+
+## Results that change
+
+* `random_select_loci()` returns the selected loci in the order of the object, instead of grouped by chromosome in random order. For a given `seed`, the loci drawn may differ from earlier versions, because the random draws are made in base R.
+
 # cgiarGenomics 1.0.3
 
 This version follows two reviews of version 1.0.2 in November 2026, the code audit in `dev/audit.md` and an external review that ran the package. Many fixes change results, so numbers produced with earlier versions will differ. Finding numbers refer to `dev/audit.md`.

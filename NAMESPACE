@@ -35,8 +35,6 @@ export(recalc_metrics)
 export(set_fraction_na)
 export(write_vcf)
 import(adegenet)
-import(stringr)
-importFrom(magrittr,"%>%")
 importFrom(methods,new)
 importFrom(stats,
   complete.cases,

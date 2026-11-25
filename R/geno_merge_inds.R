@@ -4,16 +4,16 @@
 #' @param x Dosages for one locus across replicate samples.
 #' @return The most frequent dosage, or `NA` when there is a tie or no data.
 #' @noRd
-majority_call <- function(x) {
-  freq <- table(x)
+majority_call = function(x) {
+  freq = table(x)
   if (length(freq) == 0){
-    return(NA)
+    return(NA_real_)
   } else if (sum(freq == max(freq)) > 1) {
     # tie between calls (e.g. 0 vs 2): no majority, set missing instead of
     # silently picking the lowest dosage
-    return(NA)
+    return(NA_real_)
   } else {
-    major <- names(freq)[which.max(freq)]
+    major = names(freq)[which.max(freq)]
     return(as.numeric(major))
   }
 }
@@ -23,9 +23,9 @@ majority_call <- function(x) {
 #' @param mt Dosage matrix, replicates in rows and loci in columns.
 #' @return A vector of majority calls, one per locus.
 #' @noRd
-collapse_inds <- function(mt) {
-  col_list_split <- split(mt, col(mt))  
-  consensus <- unlist(purrr::map(col_list_split, ~majority_call(.x)))
+collapse_inds = function(mt) {
+  col_list_split = split(mt, col(mt))  
+  consensus = vapply(col_list_split, majority_call, numeric(1), USE.NAMES = FALSE)
   return(consensus)
 }
 
@@ -58,8 +58,8 @@ collapse_inds <- function(mt) {
 #'                   designation_id = c("G1", "G1", "G2"))
 #' merged = merge_duplicate_inds(gl, dict)
 #' as.matrix(merged)
-merge_duplicate_inds <- function(gl, sample_dictionary) {
-  ind_names <- adegenet::indNames(gl)
+merge_duplicate_inds = function(gl, sample_dictionary) {
+  ind_names = adegenet::indNames(gl)
   
   if(!all(c("sample_id", "designation_id") %in% colnames(sample_dictionary))) {
     cli::cli_abort("`sample_dictionary` needs the columns sample_id and designation_id")
@@ -69,41 +69,41 @@ merge_duplicate_inds <- function(gl, sample_dictionary) {
   }
   
   # designation of each individual, in the order of the genlight object
-  designation <- as.character(sample_dictionary$designation_id[match(ind_names, sample_dictionary$sample_id)])
+  designation = as.character(sample_dictionary$designation_id[match(ind_names, sample_dictionary$sample_id)])
   if(anyNA(designation)) {
     cli::cli_abort("Every individual in `gl` needs a designation_id in `sample_dictionary`")
   }
   
-  mt <- as.matrix(gl)
-  n_per_designation <- table(designation)
-  single_designations <- unique(designation[designation %in% names(n_per_designation)[n_per_designation == 1]])
-  dup_designations <- sort(names(n_per_designation)[n_per_designation > 1])
+  mt = as.matrix(gl)
+  n_per_designation = table(designation)
+  single_designations = unique(designation[designation %in% names(n_per_designation)[n_per_designation == 1]])
+  dup_designations = sort(names(n_per_designation)[n_per_designation > 1])
   
   # Single samples keep their calls and take the name of their designation
-  s_mt <- mt[match(single_designations, designation), , drop = FALSE]
-  rownames(s_mt) <- single_designations
+  s_mt = mt[match(single_designations, designation), , drop = FALSE]
+  rownames(s_mt) = single_designations
   
   # Replicates are collapsed to the majority call at each locus
-  dup_mt <- matrix(numeric(0), nrow = 0, ncol = ncol(mt))
+  dup_mt = matrix(numeric(0), nrow = 0, ncol = ncol(mt))
   if(length(dup_designations) > 0) {
-    dup_mt <- do.call(rbind, lapply(dup_designations, function(d) {
+    dup_mt = do.call(rbind, lapply(dup_designations, function(d) {
       collapse_inds(mt[which(designation == d), , drop = FALSE])
     }))
-    rownames(dup_mt) <- dup_designations
+    rownames(dup_mt) = dup_designations
   }
   
-  out_mt <- rbind(s_mt, dup_mt)
-  colnames(out_mt) <- adegenet::locNames(gl)
+  out_mt = rbind(s_mt, dup_mt)
+  colnames(out_mt) = adegenet::locNames(gl)
   
   # keep the source ploidy (otherwise genlight infers it per individual from max dosage)
-  merged_gl <- new("genlight", out_mt,
+  merged_gl = new("genlight", out_mt,
                    ploidy = max(adegenet::ploidy(gl)),
                    chromosome = gl@chromosome,
                    position = gl@position)
   if (!is.null(adegenet::alleles(gl))) {
-    adegenet::alleles(merged_gl) <- adegenet::alleles(gl)
+    adegenet::alleles(merged_gl) = adegenet::alleles(gl)
   }
-  merged_gl <- recalc_metrics(merged_gl)
+  merged_gl = recalc_metrics(merged_gl)
   return(merged_gl)  
 }
 

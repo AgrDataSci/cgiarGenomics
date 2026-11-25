@@ -1,7 +1,7 @@
 Package: cgiarGenomics
 Type: Package
 Title: Reading, Quality Control and Imputation of SNP Marker Data
-Version: 1.0.3
+Version: 1.0.4
 Date: 2026-11-25
 Authors@R:
     c(person(given = "Sergio Andres", family = "Cruz",
@@ -24,16 +24,8 @@ Depends:
 Imports:
     cli,
     data.table,
-    dplyr,
-    glue,
-    magrittr,
-    Matrix,
     methods,
-    purrr,
-    rlang,
     stats,
-    stringr,
-    tidyr,
     utils
 Suggests:
     vcfR,
