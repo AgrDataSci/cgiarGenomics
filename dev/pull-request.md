@@ -1,6 +1,6 @@
-# Version 1.0.3, fixes from a code audit and an external review, tests and CI
+# Version 2.0.0, fixes from a code audit and an external review, fewer dependencies, tests and CI
 
-This PR brings cgiarGenomics from 1.0.2 to 1.0.3. It fixes the defects found by two reviews in November 2026, adds unit tests and a CI workflow, and documents the package for people and AI assistants. Function names, exported functions and existing arguments are unchanged.
+This PR brings cgiarGenomics from 1.0.2 to 2.0.0. It fixes the defects found by two reviews in November 2026, replaces eight dependencies with base R, adds unit tests and a CI workflow, and documents the package for people and AI assistants. Exported function names and existing arguments are unchanged. It is a major version because results change and an empty filter step now stops with an error.
 
 ## Why
 
@@ -39,6 +39,13 @@ Version 1.0.2 gives wrong results on several paths that Bioflow exposes, without
 - The package now requires R 4.1, which the code already needed.
 - Past analyses that used a positive MAF cutoff, thinning, Fis, heterozygosity, Random Forest or replicate merging will differ. A rerun of a sample of them would show how much.
 
+## Dependencies and performance
+
+- dplyr, tidyr, purrr, stringr, magrittr, Matrix, rlang and glue are replaced with base R. The package now imports cli, data.table, adegenet, methods, stats and utils only.
+- `ibs_matrix_purrr()` computes identity by state with matrix products instead of a loop that ran every pair twice. The name is kept for compatibility.
+- `random_select_loci()` keeps the loci in the order of the object.
+- Assignments use `=` throughout the package code.
+
 ## Package and documentation
 
 - Licence set to MIT in `DESCRIPTION`, with the full text in `LICENSE.md`.
@@ -50,7 +57,7 @@ Version 1.0.2 gives wrong results on several paths that Bioflow exposes, without
 
 ## Checks
 
-- 116 test expectations in `tests/testthat/` pass, none skipped, with vcfR, randomForest, dartR.base and Java installed.
+- 135 test expectations in `tests/testthat/` pass, none skipped, with vcfR, randomForest, dartR.base and Java installed.
 - `R CMD check --no-manual` ends with Status OK on R 4.6.2, Ubuntu.
 - The `tests` workflow in `.github/workflows/` runs both on every pull request and fails on warnings.
 

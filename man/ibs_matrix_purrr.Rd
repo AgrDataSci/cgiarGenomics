@@ -23,9 +23,11 @@ genlight object. For each locus typed in both individuals, IBS is
 those loci. Used to check purity and identity of samples.
 }
 \details{
-Runs in pure R and evaluates every pair twice, so time grows with
-the square of the number of individuals. Use a subset of loci for large
-panels, for example with \code{\link[=random_select_loci]{random_select_loci()}}.
+For whole dosages between 0 and \code{ploidy}, the scores come from
+matrix products in base R, which is fast for hundreds of individuals and
+thousands of loci. Memory still grows with the square of the number of
+individuals. Other dosages fall back to a slower loop over pairs. The
+name is kept for compatibility, the function no longer uses purrr.
 }
 \examples{
 mt = matrix(c(0, 1, 2, NA,

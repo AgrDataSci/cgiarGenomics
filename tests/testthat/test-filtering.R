@@ -54,3 +54,20 @@ test_that("random_select_loci works when two chromosomes tie for the most loci",
 
   expect_equal(adegenet::nLoc(out), 5)
 })
+
+test_that("random_select_loci keeps the loci in the order of the object", {
+  set.seed(2)
+  mt = matrix(sample(0:2, 10 * 12, replace = TRUE), nrow = 10)
+  mt[1, ] = 0
+  mt[2, ] = 2
+  gl = recalc_metrics(make_gl(mt, chromosome = rep(c("1", "2", "3"), c(6, 4, 2))))
+
+  out = random_select_loci(gl, ind_miss = 1, loc_miss = 1, maf = 0,
+                           size = 6, seed = 1)
+  kept = match(adegenet::locNames(out), adegenet::locNames(gl))
+
+  expect_equal(adegenet::nLoc(out), 6)
+  expect_false(is.unsorted(kept))
+  # 6 x 6/12 = 3 from chromosome 1, 2 from 2, 1 from 3
+  expect_equal(as.vector(table(as.character(adegenet::chromosome(out)))), c(3, 2, 1))
+})

@@ -27,7 +27,19 @@ jobs:
           extra-packages: any::devtools, any::rcmdcheck
           needs: check
 
+      - name: Check that NAMESPACE and man/ match the roxygen comments
+        run: |
+          roxygen2::roxygenise()
+          changed = system("git status --porcelain -- NAMESPACE man", intern = TRUE)
+          if (length(changed) > 0) {
+            system("git diff -- NAMESPACE man")
+            system("git ls-files --others --exclude-standard man | xargs -r tail -n +1")
+            stop("Run devtools::document() and commit NAMESPACE and man/.")
+          }
+        shell: Rscript {0}
+
       - name: Run tests
+        if: always()
         run: devtools::test(stop_on_failure = TRUE)
         shell: Rscript {0}
 

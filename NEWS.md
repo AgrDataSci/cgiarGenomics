@@ -1,6 +1,15 @@
-# cgiarGenomics 1.0.3
+# cgiarGenomics 2.0.0
 
-This version follows two reviews of version 1.0.2 in November 2026, the code audit in `dev/audit.md` and an external review that ran the package. Many fixes change results, so numbers produced with earlier versions will differ. Finding numbers refer to `dev/audit.md`.
+Version 2.0.0 follows two reviews of version 1.0.2 in November 2026, the code audit in `dev/audit.md` and an external review that ran the package. It is a major release because results change, a filter step that nothing passes now stops with an error, unused functions are removed and eight dependencies are dropped. Exported function names and existing arguments are unchanged, so Bioflow code keeps running, but numbers produced with 1.0.2 will differ. Finding numbers refer to `dev/audit.md`.
+
+## Breaking changes
+
+* `apply_sequence_filtering()` stops with an error of class `cgiarGenomics_empty_filter` when no locus or no individual passes a step (F1).
+* `merge_duplicate_inds()` names individuals by `designation_id` (P1).
+* `write_vcf()` defaults to `na_rep = NULL`, which writes missing genotypes at the ploidy of each individual (E5).
+* `random_select_loci()` returns loci in the order of the object.
+* Removed `read_genolcsv()` and the plot helpers `plot_missingnes_by_marker()`, `plot_MAF()` and `plot_overall_missingness()`. None was exported and none could run.
+* The package requires R 4.1 and no longer imports dplyr, tidyr, purrr, stringr, magrittr, Matrix, rlang, glue, ggplot2, ggrepel or scales.
 
 ## Results that change
 
@@ -16,6 +25,7 @@ This version follows two reviews of version 1.0.2 in November 2026, the code aud
 * `write_vcf()` writes a missing genotype at the ploidy of the individual, `./././.` for a tetraploid. The default of `na_rep` changes from `"./."` to `NULL`. Diploid output is unchanged (E5).
 * `impute_beagle()` sorts markers by chromosome and position before running Beagle and matches the result back by individual and locus name. Earlier versions wrote markers in object order and matched results by position in the matrix, which misplaced values when Beagle or the reader dropped a locus (I5, E4).
 * Random Forest imputation sets its seed before filling the predictors, so two runs with the same `seed` agree (E3).
+* `random_select_loci()` returns the selected loci in the order of the object, instead of grouped by chromosome in random order. For a given `seed`, the loci drawn differ from version 1.0.2, because the random draws are made in base R.
 
 ## Bug fixes
 
@@ -40,3 +50,12 @@ This version follows two reviews of version 1.0.2 in November 2026, the code aud
 * Removed the unexported `read_genolcsv()` and the plot helpers `plot_missingnes_by_marker()`, `plot_MAF()` and `plot_overall_missingness()`, none of which could run. ggplot2, ggrepel and scales are no longer imported (R8, D5).
 * The package requires R 4.1 or later, which the code already needed. BiocManager is declared in `Suggests`.
 * Unit tests in `tests/testthat/` cover every fix, and a GitHub Actions workflow runs them and `R CMD check` on each pull request (D4).
+
+## Dependencies and style
+
+* The package now imports cli, data.table, adegenet, methods, stats and utils only. dplyr, tidyr, purrr, stringr, magrittr, Matrix, rlang and glue are no longer needed. Each call was rewritten in base R, with the same results.
+* Assignments in the package code use `=` instead of `<-`.
+
+## Performance
+
+* `ibs_matrix_purrr()` computes identity by state with matrix products instead of a loop over every pair, which ran each pair twice. Results are unchanged for whole dosages. Other dosages fall back to a loop that visits each pair once. The name is kept for compatibility.

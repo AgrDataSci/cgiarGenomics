@@ -5,7 +5,7 @@
 #'
 #' @return Returns a dataframe
 #' @keywords internal
-read_tabular_geno <- function(path, sep = c('\t',',')){
+read_tabular_geno = function(path, sep = c('\t',',')){
   
   # Validate params
   sep = match.arg(sep)
@@ -13,7 +13,7 @@ read_tabular_geno <- function(path, sep = c('\t',',')){
   # Missing data representation values
   missingData = c("N","NN","FAIL","FAILED","Uncallable","Unused","-","NA","",-9)
 
-  df <- as.data.frame(data.table::fread(path,
+  df = as.data.frame(data.table::fread(path,
                                         sep = sep,
                                         header = TRUE,
                                         na.strings = missingData))
@@ -22,11 +22,11 @@ read_tabular_geno <- function(path, sep = c('\t',',')){
 
 #' Split genotype calls into alleles (internal)
 #' @noRd
-split_strings <- function(l, ploidity){
+split_strings = function(l, ploidity){
   sapply(l, function(x){
-    allele_length <- nchar(x) / ploidity
+    allele_length = nchar(x) / ploidity
     # List with each allele as element
-    split_genotype <- substring(x, seq(1, nchar(x), allele_length),
+    split_genotype = substring(x, seq(1, nchar(x), allele_length),
                                 seq(allele_length, nchar(x), allele_length))
     return(split_genotype)
   })
@@ -53,13 +53,12 @@ split_strings <- function(l, ploidity){
 #' Imputation rows are not applied. The function replays removals only and
 #' warns when the table holds imputation rows. See `dev/audit.md`, finding B2.
 #' @export
-apply_bioflow_modifications <- function(gl, modifications){
+apply_bioflow_modifications = function(gl, modifications){
   
   # Filtering modifications
-  filt_mods <- modifications %>% 
-    dplyr::filter(!grepl("^imputation", reason))
+  filt_mods = modifications[!grepl("^imputation", modifications$reason), , drop = FALSE]
   
-  n_imp <- nrow(modifications) - nrow(filt_mods)
+  n_imp = nrow(modifications) - nrow(filt_mods)
   if (n_imp > 0) {
     cli::cli_warn("{n_imp} imputation row{?s} in `modifications` {?was/were} not applied. This function replays removals only.")
   }
@@ -69,21 +68,16 @@ apply_bioflow_modifications <- function(gl, modifications){
   }
   
   
-  ind_out <- filt_mods %>% 
-    dplyr::filter(is.na(col)) %>% 
-    dplyr::pull(row)
-  
-  loc_out <- filt_mods %>% 
-    dplyr::filter(is.na(row)) %>% 
-    dplyr::pull(col)
+  ind_out = filt_mods$row[is.na(filt_mods$col)]
+  loc_out = filt_mods$col[is.na(filt_mods$row)]
   
   # setdiff() keeps every element when nothing is removed from a margin.
   # Negative indexing with an empty vector would drop the whole margin.
-  ind_idx <- setdiff(seq_len(adegenet::nInd(gl)), ind_out)
-  loc_idx <- setdiff(seq_len(adegenet::nLoc(gl)), loc_out)
+  ind_idx = setdiff(seq_len(adegenet::nInd(gl)), ind_out)
+  loc_idx = setdiff(seq_len(adegenet::nLoc(gl)), loc_out)
   
 
-  filt_gl <- gl[ind_idx, loc_idx]
+  filt_gl = gl[ind_idx, loc_idx]
   return(filt_gl)
 }
 
@@ -100,7 +94,7 @@ apply_bioflow_modifications <- function(gl, modifications){
 #'   a diploid and `./././.` for a tetraploid.
 #'
 #' @export
-write_vcf <- function(gl, output_path, na_rep = NULL) {
+write_vcf = function(gl, output_path, na_rep = NULL) {
   if (!inherits(gl, "genlight")) {
     cli::cli_abort("`gl` must be a genlight object.")
   }
@@ -108,76 +102,76 @@ write_vcf <- function(gl, output_path, na_rep = NULL) {
     cli::cli_abort("`output_path` must be a single character string.")
   }
   
-  n_loci <- length(adegenet::locNames(gl))
-  n_samples <- length(adegenet::indNames(gl))
+  n_loci = length(adegenet::locNames(gl))
+  n_samples = length(adegenet::indNames(gl))
   
-  gt_matrix <- as.matrix(gl)
+  gt_matrix = as.matrix(gl)
   
   # Extract alleles
-  alleles <- adegenet::alleles(gl)
+  alleles = adegenet::alleles(gl)
   if (is.null(alleles)) {
-    ref_alleles <- rep("N", n_loci)
-    alt_alleles <- rep("N", n_loci)
+    ref_alleles = rep("N", n_loci)
+    alt_alleles = rep("N", n_loci)
   } else {
-    split_alleles <- strsplit(as.character(alleles), "/")
-    ref_alleles <- sapply(split_alleles, function(x) {
+    split_alleles = strsplit(as.character(alleles), "/")
+    ref_alleles = sapply(split_alleles, function(x) {
       if (length(x) >= 1 && !is.na(x[1])) x[1] else "N"
     })
-    alt_alleles <- sapply(split_alleles, function(x) {
+    alt_alleles = sapply(split_alleles, function(x) {
       if (length(x) >= 2 && !is.na(x[2])) x[2] else "N"
     })
   }
   
   # Ploidy
-  p_ind <- adegenet::ploidy(gl)
+  p_ind = adegenet::ploidy(gl)
   if (length(p_ind) == 1) {
-    p_ind <- rep(p_ind, n_samples)
+    p_ind = rep(p_ind, n_samples)
   }
   
   # Translate dosages to VCF genotype format
-  V <- matrix("", nrow = n_samples, ncol = n_loci)
+  V = matrix("", nrow = n_samples, ncol = n_loci)
   for (i in seq_len(n_samples)) {
-    p <- p_ind[i]
-    possible_dosages <- 0:p
-    gt_strings <- sapply(possible_dosages, function(d) {
+    p = p_ind[i]
+    possible_dosages = 0:p
+    gt_strings = sapply(possible_dosages, function(d) {
       paste(c(rep("0", p - d), rep("1", d)), collapse = "/")
     })
-    names(gt_strings) <- as.character(possible_dosages)
+    names(gt_strings) = as.character(possible_dosages)
     
-    row_na_rep <- if (is.null(na_rep)) {
+    row_na_rep = if (is.null(na_rep)) {
       paste(rep(".", p), collapse = "/")
     } else {
       na_rep
     }
     
-    row_vals <- gt_matrix[i, ]
-    row_chars <- as.character(row_vals)
-    translated <- gt_strings[row_chars]
-    translated[is.na(row_vals)] <- row_na_rep
-    V[i, ] <- translated
+    row_vals = gt_matrix[i, ]
+    row_chars = as.character(row_vals)
+    translated = gt_strings[row_chars]
+    translated[is.na(row_vals)] = row_na_rep
+    V[i, ] = translated
   }
   
   # Calculate AC and AN
-  ac_vals <- colSums(gt_matrix, na.rm = TRUE)
+  ac_vals = colSums(gt_matrix, na.rm = TRUE)
   if (length(unique(p_ind)) == 1) {
-    an_vals <- colSums(!is.na(gt_matrix)) * p_ind[1]
+    an_vals = colSums(!is.na(gt_matrix)) * p_ind[1]
   } else {
-    an_vals <- colSums(!is.na(gt_matrix) * p_ind)
+    an_vals = colSums(!is.na(gt_matrix) * p_ind)
   }
-  info_val <- paste0("AC=", ac_vals, ";AN=", an_vals)
+  info_val = paste0("AC=", ac_vals, ";AN=", an_vals)
   
   # Chromosome and position
-  chrom_val <- if (!is.null(adegenet::chromosome(gl))) as.character(adegenet::chromosome(gl)) else rep(".", n_loci)
-  pos_val <- if (!is.null(adegenet::position(gl))) as.character(adegenet::position(gl)) else rep(".", n_loci)
+  chrom_val = if (!is.null(adegenet::chromosome(gl))) as.character(adegenet::chromosome(gl)) else rep(".", n_loci)
+  pos_val = if (!is.null(adegenet::position(gl))) as.character(adegenet::position(gl)) else rep(".", n_loci)
   
-  chrom_val[is.na(chrom_val)] <- "."
-  pos_val[is.na(pos_val)] <- "."
+  chrom_val[is.na(chrom_val)] = "."
+  pos_val[is.na(pos_val)] = "."
   
-  id_val <- adegenet::locNames(gl)
-  if (is.null(id_val)) id_val <- paste0("Locus_", seq_len(n_loci))
+  id_val = adegenet::locNames(gl)
+  if (is.null(id_val)) id_val = paste0("Locus_", seq_len(n_loci))
   
   # VCF data columns
-  vcf_data <- data.frame(
+  vcf_data = data.frame(
     `#CHROM` = chrom_val,
     POS = pos_val,
     ID = id_val,
@@ -192,12 +186,12 @@ write_vcf <- function(gl, output_path, na_rep = NULL) {
   )
   
   # Genotype columns
-  gt_cols <- t(V)
-  colnames(gt_cols) <- adegenet::indNames(gl)
-  vcf_df <- cbind(vcf_data, gt_cols)
+  gt_cols = t(V)
+  colnames(gt_cols) = adegenet::indNames(gl)
+  vcf_df = cbind(vcf_data, gt_cols)
   
   # Headers
-  header <- c(
+  header = c(
     "##fileformat=VCFv4.0",
     "##FILTER=<ID=PASS,Description=\"All filters passed\">",
     "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
@@ -206,7 +200,7 @@ write_vcf <- function(gl, output_path, na_rep = NULL) {
   )
   
   # Write
-  con <- if (grepl("\\.gz$", output_path, ignore.case = TRUE)) {
+  con = if (grepl("\\.gz$", output_path, ignore.case = TRUE)) {
     gzfile(output_path, "wt")
   } else {
     file(output_path, "wt")
@@ -222,14 +216,14 @@ write_vcf <- function(gl, output_path, na_rep = NULL) {
 #' @param allowed,required Character vectors of argument names.
 #' @param method Method name, used in error messages.
 #' @noRd
-check_method_args <- function(dots, allowed, required, method) {
-  supplied <- names(dots)
+check_method_args = function(dots, allowed, required, method) {
+  supplied = names(dots)
   
   if (is.null(supplied)) {
-    supplied <- character()
+    supplied = character()
   }
   
-  unnamed <- supplied == ""
+  unnamed = supplied == ""
   
   if (any(unnamed)) {
     stop(
@@ -238,7 +232,7 @@ check_method_args <- function(dots, allowed, required, method) {
     )
   }
   
-  unknown <- setdiff(supplied, allowed)
+  unknown = setdiff(supplied, allowed)
   
   if (length(unknown) > 0) {
     stop(
@@ -252,7 +246,7 @@ check_method_args <- function(dots, allowed, required, method) {
     )
   }
   
-  missing_required <- setdiff(required, supplied)
+  missing_required = setdiff(required, supplied)
   
   if (length(missing_required) > 0) {
     stop(
@@ -296,7 +290,7 @@ check_method_args <- function(dots, allowed, required, method) {
 #' gl = new("genlight", mt, ploidy = 2)
 #' trios = data.frame(designation = "kid", mother = "mum", father = "dad")
 #' get_mendelian_error_counts(gl, trios)
-get_mendelian_error_counts <- function(gl, trios) {
+get_mendelian_error_counts = function(gl, trios) {
   
   if (any(adegenet::ploidy(gl) != 2)) {
     cli::cli_abort("Only diploid 0/1/2 dosages are supported.")
@@ -324,39 +318,45 @@ get_mendelian_error_counts <- function(gl, trios) {
   # 2, 2, 1,
   # 2, 2, 2
   
-  G <- as.matrix(gl)
-  ids <- adegenet::indNames(gl)
+  G = as.matrix(gl)
+  ids = adegenet::indNames(gl)
   
-  child_idx <- match(trios$designation, ids)
-  mother_idx <- match(trios$mother, ids)
-  father_idx <- match(trios$father, ids)
+  child_idx = match(trios$designation, ids)
+  mother_idx = match(trios$mother, ids)
+  father_idx = match(trios$father, ids)
   
-  present <- !is.na(child_idx) & !is.na(mother_idx) & !is.na(father_idx)
+  present = !is.na(child_idx) & !is.na(mother_idx) & !is.na(father_idx)
   
-  n <- nrow(trios)
+  n = nrow(trios)
   
-  res <- data.frame(n_markers = rep(NA_integer_, n), n_evaluated = NA_integer_,
+  res = data.frame(n_markers = rep(NA_integer_, n), n_evaluated = NA_integer_,
                     n_missing = NA_integer_, n_errors = NA_integer_,
                     error_rate = NA_real_)
   
   if (any(present)) {
-    C  <- G[child_idx[present], , drop = FALSE]
-    M  <- G[mother_idx[present], , drop = FALSE]
-    Fa <- G[father_idx[present], , drop = FALSE]
-    ok  <- !is.na(C) & !is.na(M) & !is.na(Fa)
+    C  = G[child_idx[present], , drop = FALSE]
+    M  = G[mother_idx[present], , drop = FALSE]
+    Fa = G[father_idx[present], , drop = FALSE]
+    ok  = !is.na(C) & !is.na(M) & !is.na(Fa)
     # late generations: impossible only if parents share a homozygote and child differs
-    err <- ok & (M == Fa) & (M != 1) & (C != M)
-    n_ev  <- rowSums(ok)
-    n_err <- rowSums(err)
-    res[present, ] <- data.frame(ncol(G), n_ev, ncol(G) - n_ev, n_err,
+    err = ok & (M == Fa) & (M != 1) & (C != M)
+    n_ev  = rowSums(ok)
+    n_err = rowSums(err)
+    res[present, ] = data.frame(ncol(G), n_ev, ncol(G) - n_ev, n_err,
                                  ifelse(n_ev > 0, n_err / n_ev, NA_real_))
   }
   
-  out <- trios
-  out$pedigree_present <- present
+  out = trios
+  out$pedigree_present = present
   cbind(out, res)
 }
 
 
 
 
+
+#' Check for a single whole number (internal)
+#' @noRd
+is_whole_number = function(x) {
+  is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x) && x == round(x)
+}

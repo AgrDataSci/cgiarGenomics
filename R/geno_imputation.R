@@ -12,15 +12,15 @@
 #' @examples
 #' set.seed(1)
 #' cgiarGenomics:::i_freq_impute(0.3, ploidity = 2)
-i_freq_impute <- function(q_frq, ploidity = 2){
-  if(!rlang::is_integerish(ploidity)){
+i_freq_impute = function(q_frq, ploidity = 2){
+  if(!is_whole_number(ploidity)){
     cli::cli_abort("`ploidity` is not an integer: {ploidity}")  
   }
-  dosage <- 0
+  dosage = 0
   for(i_chromatid in seq(ploidity)){
-    i_dosage <- sample(c(1,0), size = 1, 
+    i_dosage = sample(c(1,0), size = 1, 
                        prob = c(q_frq, 1 - q_frq), replace = T)
-    dosage <- dosage + i_dosage
+    dosage = dosage + i_dosage
   }
   return(dosage)
 }
@@ -29,20 +29,20 @@ i_freq_impute <- function(q_frq, ploidity = 2){
 #'
 #' @return A list of linear matrix indices, named by imputed dosage.
 #' @noRd
-freq_impute <- function(gl, mt, ploidity){
-  mt <- as.matrix(gl)
+freq_impute = function(gl, mt, ploidity){
+  mt = as.matrix(gl)
   # Linear index of nas
-  idx_na <- which(is.na(mt))
+  idx_na = which(is.na(mt))
   # A complete panel has nothing to impute
   if (length(idx_na) == 0) {
     return(list())
   }
   # Get the allelic frequencies
-  q_allele <- adegenet::glMean(gl)
+  q_allele = adegenet::glMean(gl)
   # Locus (column) of each missing cell
-  na_loc_idx <- ceiling(idx_na/nrow(mt))
+  na_loc_idx = ceiling(idx_na/nrow(mt))
   
-  imp <- vapply(q_allele[na_loc_idx],
+  imp = vapply(q_allele[na_loc_idx],
                 function(x) as.numeric(i_freq_impute(q_frq = x, ploidity)),
                 numeric(1))
   return(split(idx_na, unname(imp)))
@@ -54,16 +54,16 @@ freq_impute <- function(gl, mt, ploidity){
 #' @param imp_dict List of linear indices named by dosage.
 #' @return The matrix with imputed values.
 #' @noRd
-apply_imputation <- function(mt, imp_dict){
+apply_imputation = function(mt, imp_dict){
   for (dosage in names(imp_dict)) {
     # Convert the list name to a numeric value
-    num_dosage <- as.numeric(dosage)
+    num_dosage = as.numeric(dosage)
     
     # Get the linear indices associated with this value
-    idx <- imp_dict[[dosage]]
+    idx = imp_dict[[dosage]]
     
     # Assign the value to these positions in the matrix
-    mt[idx] <- num_dosage
+    mt[idx] = num_dosage
   }
   return(mt)
 }
@@ -80,14 +80,14 @@ apply_imputation <- function(mt, imp_dict){
 #'
 #' @return Vector of imputed genotype calls for target marker
 #' @keywords internal
-i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
+i_rf_impute = function(target, predictors, ntree = 100, seed = NULL) {
   if (!is.null(seed)) {
     set.seed(seed)
   }
   
   # Identify missing and non-missing positions in target
-  miss_idx <- which(is.na(target))
-  n_miss <- length(miss_idx)
+  miss_idx = which(is.na(target))
+  n_miss = length(miss_idx)
   
   # If no missing data, return as-is
   if (n_miss == 0) {
@@ -100,8 +100,8 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
   }
   
   # Find indices where target is not NA AND predictors are complete (for training)
-  pred_complete <- which(complete.cases(predictors))
-  train_idx <- pred_complete[!is.na(target[pred_complete])]
+  pred_complete = which(complete.cases(predictors))
+  train_idx = pred_complete[!is.na(target[pred_complete])]
   
 
   if (length(train_idx) < 2) {
@@ -111,7 +111,7 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
   
   
   # Filter target and predictors to training indices
-  target_train <- target[train_idx]
+  target_train = target[train_idx]
   
   
   if (length(unique(target_train)) == 1) {
@@ -119,10 +119,10 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
     return(NA)
   }
   
-  predictors_train <- predictors[train_idx, , drop = FALSE]
+  predictors_train = predictors[train_idx, , drop = FALSE]
   
   # Train random forest on non-missing observations
-  rf_model <- randomForest::randomForest(
+  rf_model = randomForest::randomForest(
     x = predictors_train,
     y = target_train,
     ntree = ntree,
@@ -132,14 +132,14 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
   
   if (length(miss_idx) > 0) {
     # Predict for samples with complete predictor data
-    predictors_miss_complete <- predictors[miss_idx, , drop = FALSE]
-    predictions <- stats::predict(rf_model, newdata = predictors_miss_complete)
+    predictors_miss_complete = predictors[miss_idx, , drop = FALSE]
+    predictions = stats::predict(rf_model, newdata = predictors_miss_complete)
     
     # Round predictions to nearest integer (genotype call)
-    # predictions <- round(predictions)
+    # predictions = round(predictions)
     
     # Assign predictions only to positions with complete predictors
-    target[miss_idx] <- predictions
+    target[miss_idx] = predictions
   }
   return(target)
 }
@@ -162,12 +162,12 @@ i_rf_impute <- function(target, predictors, ntree = 100, seed = NULL) {
 #' @return List where names are dosage values and elements are linear indices of NA positions
 #'
 #' @keywords internal
-rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, nthreads = NULL) {
+rf_impute = function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, nthreads = NULL) {
   
   require_optional("randomForest")
   
   if (is.null(nthreads)) {
-    nthreads <- get_default_beagle_threads()
+    nthreads = get_default_beagle_threads()
   }
   
   # The predictors are filled by random draws, so the seed is set here too.
@@ -177,19 +177,19 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
   }
   
   # impute with frequency to get a filled predictors matrix
-  pred_gl <- impute_gl(gl, ploidity, method = "frequency")$gl
-  pred_mt <- as.matrix(pred_gl)
+  pred_gl = impute_gl(gl, ploidity, method = "frequency")$gl
+  pred_mt = as.matrix(pred_gl)
   
-  mt <- as.matrix(gl)
-  n_markers <- ncol(mt)
-  n_samples <- nrow(mt)
+  mt = as.matrix(gl)
+  n_markers = ncol(mt)
+  n_samples = nrow(mt)
   
   # Get chromosome information for each marker
-  chr <- adegenet::chromosome(gl)
+  chr = adegenet::chromosome(gl)
   
   # Identify markers that need imputation
-  markers_with_na <- which(colSums(is.na(mt)) > 0)
-  n_to_impute <- length(markers_with_na)
+  markers_with_na = which(colSums(is.na(mt)) > 0)
+  n_to_impute = length(markers_with_na)
   
   if (n_to_impute == 0) {
     return(list())
@@ -199,17 +199,17 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
   
   # Worker function: imputes a single marker and returns the imputed column
 
-  impute_one_marker <- function(i_marker) {
-    target <- mt[, i_marker]
+  impute_one_marker = function(i_marker) {
+    target = mt[, i_marker]
     
     # Get chromosome of target marker
-    target_chr <- chr[i_marker]
+    target_chr = chr[i_marker]
     
     # Find all markers on the same chromosome
-    same_chr_idx <- which(chr == target_chr)
+    same_chr_idx = which(chr == target_chr)
     
     # Find position of target marker within chromosome markers
-    pos_in_chr <- which(same_chr_idx == i_marker)
+    pos_in_chr = which(same_chr_idx == i_marker)
     
     # Skip if marker not found in this chromosome
     if (length(pos_in_chr) == 0) {
@@ -217,51 +217,51 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
     }
     
     # Determine flanking range respecting chromosome boundaries
-    n_available_before <- pos_in_chr - 1
-    n_available_after <- length(same_chr_idx) - pos_in_chr
+    n_available_before = pos_in_chr - 1
+    n_available_after = length(same_chr_idx) - pos_in_chr
     
-    n_flank_before <- min(nflank, n_available_before)
-    n_flank_after <- min(nflank, n_available_after)
+    n_flank_before = min(nflank, n_available_before)
+    n_flank_after = min(nflank, n_available_after)
     
     # If one side has fewer than nflank, compensate from the other side
     if (n_flank_before < nflank) {
-      n_flank_after <- min(nflank + (nflank - n_flank_before), n_available_after)
+      n_flank_after = min(nflank + (nflank - n_flank_before), n_available_after)
     } else if (n_flank_after < nflank) {
-      n_flank_before <- min(nflank + (nflank - n_flank_after), n_available_before)
+      n_flank_before = min(nflank + (nflank - n_flank_after), n_available_before)
     }
     
     # Get indices of flanking markers
-    flank_idx_before <- integer(0)
-    flank_idx_after <- integer(0)
+    flank_idx_before = integer(0)
+    flank_idx_after = integer(0)
     
     if (n_flank_before > 0 && pos_in_chr > 1) {
-      start_pos <- max(1, pos_in_chr - n_flank_before)
-      end_pos <- pos_in_chr - 1
+      start_pos = max(1, pos_in_chr - n_flank_before)
+      end_pos = pos_in_chr - 1
       if (start_pos <= end_pos) {
-        flank_idx_before <- same_chr_idx[start_pos:end_pos]
+        flank_idx_before = same_chr_idx[start_pos:end_pos]
       }
     }
     
     if (n_flank_after > 0 && pos_in_chr < length(same_chr_idx)) {
-      start_pos <- pos_in_chr + 1
-      end_pos <- min(length(same_chr_idx), pos_in_chr + n_flank_after)
+      start_pos = pos_in_chr + 1
+      end_pos = min(length(same_chr_idx), pos_in_chr + n_flank_after)
       if (start_pos <= end_pos) {
-        flank_idx_after <- same_chr_idx[start_pos:end_pos]
+        flank_idx_after = same_chr_idx[start_pos:end_pos]
       }
     }
     
-    flank_idx <- c(flank_idx_before, flank_idx_after)
-    flank_idx <- flank_idx[!is.na(flank_idx) & flank_idx > 0 & flank_idx <= n_markers]
+    flank_idx = c(flank_idx_before, flank_idx_after)
+    flank_idx = flank_idx[!is.na(flank_idx) & flank_idx > 0 & flank_idx <= n_markers]
     
     # Get predictor markers
     if (length(flank_idx) > 0) {
-      predictors <- pred_mt[, flank_idx, drop = FALSE]
+      predictors = pred_mt[, flank_idx, drop = FALSE]
     } else {
-      predictors <- matrix(numeric(0), nrow = n_samples, ncol = 0)
+      predictors = matrix(numeric(0), nrow = n_samples, ncol = 0)
     }
     
     # Impute using RF
-    imputed_target <- i_rf_impute(
+    imputed_target = i_rf_impute(
       target = as.factor(unlist(target)),
       predictors = predictors,
       ntree = ntree,
@@ -280,7 +280,7 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
   if (nthreads > 1) {
     if (.Platform$OS.type == "windows") {
       # Windows: use parLapply with a PSOCK cluster
-      cl <- parallel::makeCluster(nthreads)
+      cl = parallel::makeCluster(nthreads)
       on.exit(parallel::stopCluster(cl), add = TRUE)
       
       # Export required objects and functions to the cluster
@@ -290,28 +290,28 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
       ), envir = environment())
       parallel::clusterEvalQ(cl, library(randomForest))
       
-      results <- parallel::parLapply(cl, markers_with_na, impute_one_marker)
+      results = parallel::parLapply(cl, markers_with_na, impute_one_marker)
     } else {
       # Unix: use mclapply (fork-based, no export needed)
-      results <- parallel::mclapply(
+      results = parallel::mclapply(
         markers_with_na, impute_one_marker,
         mc.cores = nthreads
       )
     }
   } else {
-    results <- lapply(markers_with_na, impute_one_marker)
+    results = lapply(markers_with_na, impute_one_marker)
   }
   
   # Apply results back to the matrix
   for (i in seq_along(markers_with_na)) {
-    mt[, markers_with_na[i]] <- results[[i]]
+    mt[, markers_with_na[i]] = results[[i]]
   }
   
   # Build imputation dictionary: group by imputed dosage values
-  idx_na <- which(is.na(as.matrix(gl)))
+  idx_na = which(is.na(as.matrix(gl)))
   if (length(idx_na) > 0) {
-    imputed_values <- mt[idx_na]
-    imp_dict <- split(idx_na, imputed_values)
+    imputed_values = mt[idx_na]
+    imp_dict = split(idx_na, imputed_values)
   }
   
   return(imp_dict)
@@ -357,31 +357,31 @@ rf_impute <- function(gl, ploidity = 2, nflank = 100, ntree = 100, seed = NULL, 
 #' set.seed(1)
 #' imp = impute_gl(gl, ploidity = 2, method = "frequency")
 #' as.matrix(imp$gl)
-impute_gl <- function(gl, ploidity = 2, method, ...){
+impute_gl = function(gl, ploidity = 2, method, ...){
   
-  method <- match.arg(
+  method = match.arg(
     method,
     choices = c("frequency", "random_forest", "beagle")
   )
-  dots <- list(...)
+  dots = list(...)
   
-  obj_ploidy <- max(adegenet::ploidy(gl))
+  obj_ploidy = max(adegenet::ploidy(gl))
   if (ploidity != obj_ploidy) {
     cli::cli_warn("`ploidity` is {ploidity} but the object has ploidy {obj_ploidy}. Pass the ploidy of the data.")
   }
   
-  mt <- as.matrix(gl)
-  loci_all_nas <- colSums(!is.na(mt)) == 0
+  mt = as.matrix(gl)
+  loci_all_nas = colSums(!is.na(mt)) == 0
   
   if(sum(loci_all_nas) > 0){
     cli::cli_warn("There are {sum(loci_all_nas)} loci with all missing data. They are removed before imputation.")
     # Filter out the all na loci
-    all_notna_idxs <- which(!loci_all_nas)
-    gl <- gl[,all_notna_idxs]
-    mt <- as.matrix(gl)
+    all_notna_idxs = which(!loci_all_nas)
+    gl = gl[,all_notna_idxs]
+    mt = as.matrix(gl)
   }
   
-  number_imputations <- sum(is.na(mt))
+  number_imputations = sum(is.na(mt))
   cli::cli_inform("Missing genotype calls {number_imputations}")
   
   # A complete panel is a valid input, for instance a cleaned panel submitted
@@ -391,9 +391,9 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
   }
   
   if(method == 'frequency'){
-    imp_dict <- freq_impute(gl, mt, ploidity)
+    imp_dict = freq_impute(gl, mt, ploidity)
   } else if(method == 'random_forest'){
-    allowed <- c("nflank", 'ntree', 'seed', 'nthreads')
+    allowed = c("nflank", 'ntree', 'seed', 'nthreads')
     check_method_args(
       dots = dots,
       allowed = allowed,
@@ -401,11 +401,11 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
       method = method
     )
     cli::cli_inform("Imputing with Random Forest")
-    imp_dict <- do.call(rf_impute, c(list(gl = gl,
+    imp_dict = do.call(rf_impute, c(list(gl = gl,
                                      ploidity = ploidity), dots))
       
   } else if(method == 'beagle'){
-    allowed <- c("jre_path", 'beagle_path', 'memory',
+    allowed = c("jre_path", 'beagle_path', 'memory',
                  'burnin', 'iterations', 'seed', 'nthreads')
     check_method_args(
       dots = dots,
@@ -413,24 +413,24 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
       required = character(),
       method = method
     )
-    imp_dict <- do.call(impute_beagle, c(list(gl = gl), dots))
+    imp_dict = do.call(impute_beagle, c(list(gl = gl), dots))
   }
   
   # Every imputed value must be a dosage, and only missing cells may change
-  imp_values <- suppressWarnings(as.numeric(names(imp_dict)))
+  imp_values = suppressWarnings(as.numeric(names(imp_dict)))
   if (anyNA(imp_values) || any(imp_values < 0 | imp_values > ploidity | imp_values %% 1 != 0)) {
     cli::cli_abort("Imputation returned values outside the dosage range 0 to {ploidity}: {names(imp_dict)}")
   }
-  imputed_cells <- unlist(imp_dict, use.names = FALSE)
+  imputed_cells = unlist(imp_dict, use.names = FALSE)
   if (!all(imputed_cells %in% which(is.na(mt)))) {
     cli::cli_abort("Imputation tried to change calls that were not missing.")
   }
   
   # apply the imputation creating a new gl instance
-  imp_mt <- apply_imputation(mt, imp_dict)
+  imp_mt = apply_imputation(mt, imp_dict)
   
   
-  imp_gl <- new("genlight",
+  imp_gl = new("genlight",
             imp_mt,
             ploidy = ploidity,
             loc.names = gl@loc.names,
@@ -439,9 +439,9 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
             position = gl@position)
   
   if (!is.null(adegenet::alleles(gl))) {
-    adegenet::alleles(imp_gl) <- adegenet::alleles(gl)
+    adegenet::alleles(imp_gl) = adegenet::alleles(gl)
   }
-  imp_gl <- recalc_metrics(imp_gl)
+  imp_gl = recalc_metrics(imp_gl)
   return(list(gl = imp_gl, log = imp_dict))
 }
 
@@ -471,37 +471,37 @@ impute_gl <- function(gl, ploidity = 2, method, ...){
 #' set.seed(1)
 #' masked = set_fraction_na(gl, fraction = 0.25)
 #' as.matrix(masked)
-set_fraction_na <- function(gl, fraction = 0.1) {
+set_fraction_na = function(gl, fraction = 0.1) {
     # Ensure fraction is between 0 and 1
     if (!is.numeric(fraction) || length(fraction) != 1 || fraction < 0 || fraction > 1) {
       stop("fraction must be a number between 0 and 1")
     }
-    m <- as.matrix(gl)
+    m = as.matrix(gl)
     
     # Only calls that are not missing can be masked
-    called <- which(!is.na(m))
+    called = which(!is.na(m))
     
     # Compute how many elements to replace
-    n_replace <- min(round(length(m) * fraction), length(called))
+    n_replace = min(round(length(m) * fraction), length(called))
     
     # Randomly choose positions
-    positions <- integer(0)
+    positions = integer(0)
     if (n_replace > 0) {
-      positions <- sort(called[sample.int(length(called), size = n_replace)])
+      positions = sort(called[sample.int(length(called), size = n_replace)])
     }
     
     # Replace chosen positions with NA
-    m[positions] <- NA
+    m[positions] = NA
     
-    masked_gl <- new("genlight", m, ploidy = max(adegenet::ploidy(gl)),
+    masked_gl = new("genlight", m, ploidy = max(adegenet::ploidy(gl)),
                      chromosome = gl@chromosome,
                      position = gl@position)
     if (!is.null(adegenet::alleles(gl))) {
-      adegenet::alleles(masked_gl) <- adegenet::alleles(gl)
+      adegenet::alleles(masked_gl) = adegenet::alleles(gl)
     }
-    masked_gl <- recalc_metrics(masked_gl)
+    masked_gl = recalc_metrics(masked_gl)
     # linear indices of the masked cells, for get_accuracy()
-    masked_gl@other$masked_cells <- positions
+    masked_gl@other$masked_cells = positions
     return(masked_gl)
 }
 
@@ -535,18 +535,18 @@ set_fraction_na <- function(gl, fraction = 0.1) {
 #' masked = set_fraction_na(gl, fraction = 0.25)
 #' imputed = impute_gl(masked, ploidity = 2, method = "frequency")
 #' get_accuracy(gl, imputed$gl, masked_gl = masked)
-get_accuracy <- function(ref_gl, imp_gl, masked_gl = NULL){
+get_accuracy = function(ref_gl, imp_gl, masked_gl = NULL){
   # Get the gt matix of the two gls
-  ref_m <- as.matrix(ref_gl)
-  imp_m <- as.matrix(imp_gl)
+  ref_m = as.matrix(ref_gl)
+  imp_m = as.matrix(imp_gl)
   
   # Imputation removes loci with no data, so match the two by name
-  has_names <- function(m) !is.null(rownames(m)) && !is.null(colnames(m))
+  has_names = function(m) !is.null(rownames(m)) && !is.null(colnames(m))
   if (has_names(ref_m) && has_names(imp_m)) {
-    inds <- intersect(rownames(ref_m), rownames(imp_m))
-    locs <- intersect(colnames(ref_m), colnames(imp_m))
-    ref_m <- ref_m[inds, locs, drop = FALSE]
-    imp_m <- imp_m[inds, locs, drop = FALSE]
+    inds = intersect(rownames(ref_m), rownames(imp_m))
+    locs = intersect(colnames(ref_m), colnames(imp_m))
+    ref_m = ref_m[inds, locs, drop = FALSE]
+    imp_m = imp_m[inds, locs, drop = FALSE]
   }
   if (!identical(dim(ref_m), dim(imp_m))) {
     cli::cli_abort("`ref_gl` and `imp_gl` do not have the same individuals and loci.")
@@ -557,28 +557,28 @@ get_accuracy <- function(ref_gl, imp_gl, masked_gl = NULL){
       "Every called reference cell is scored, including cells that were never masked, so accuracy is inflated.",
       "i" = "Pass the output of `set_fraction_na()` as `masked_gl` to score the masked cells only."
     ))
-    target <- !is.na(ref_m)
+    target = !is.na(ref_m)
   } else {
-    mask_m <- as.matrix(masked_gl)
+    mask_m = as.matrix(masked_gl)
     if (has_names(ref_m) && has_names(mask_m)) {
       if (!all(rownames(ref_m) %in% rownames(mask_m)) || !all(colnames(ref_m) %in% colnames(mask_m))) {
         cli::cli_abort("`masked_gl` lacks individuals or loci of `ref_gl`.")
       }
-      mask_m <- mask_m[rownames(ref_m), colnames(ref_m), drop = FALSE]
+      mask_m = mask_m[rownames(ref_m), colnames(ref_m), drop = FALSE]
     }
     if (!identical(dim(ref_m), dim(mask_m))) {
       cli::cli_abort("`ref_gl` and `masked_gl` do not have the same individuals and loci.")
     }
     # Cells with a known answer that the imputation had to fill
-    target <- is.na(mask_m) & !is.na(ref_m)
+    target = is.na(mask_m) & !is.na(ref_m)
   }
   
   # A cell left missing by the imputation counts as wrong
-  hit <- target & !is.na(imp_m) & (ref_m == imp_m)
-  n_scored <- colSums(target)
-  accuracy <- colSums(hit, na.rm = TRUE)/n_scored
-  accuracy[n_scored == 0] <- NA
-  attr(accuracy, "n_scored") <- n_scored
+  hit = target & !is.na(imp_m) & (ref_m == imp_m)
+  n_scored = colSums(target)
+  accuracy = colSums(hit, na.rm = TRUE)/n_scored
+  accuracy[n_scored == 0] = NA
+  attr(accuracy, "n_scored") = n_scored
   
   return(accuracy)
 }
@@ -608,7 +608,7 @@ get_accuracy <- function(ref_gl, imp_gl, masked_gl = NULL){
 #'
 #' @return A list where names are dosage values and elements are linear indices of imputed positions.
 #' @export
-impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx4g",
+impute_beagle = function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx4g",
                           burnin = 3, iterations = 12, seed = -99999, nthreads = NULL) {
   
   # These settings reach the command line. Check them before anything runs,
@@ -620,12 +620,12 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
       "i" = "Use a value such as \"Xmx4g\" or \"Xmx512m\"."
     ))
   }
-  whole_numbers <- list(burnin = burnin, iterations = iterations, seed = seed)
+  whole_numbers = list(burnin = burnin, iterations = iterations, seed = seed)
   if (!is.null(nthreads)) {
-    whole_numbers$nthreads <- nthreads
+    whole_numbers$nthreads = nthreads
   }
   for (arg_name in names(whole_numbers)) {
-    value <- whole_numbers[[arg_name]]
+    value = whole_numbers[[arg_name]]
     if (!is.numeric(value) || length(value) != 1 || !is.finite(value) || value != round(value)) {
       cli::cli_abort("`{arg_name}` must be a single whole number.")
     }
@@ -642,14 +642,14 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
     cli::cli_abort("`gl` must be a genlight object.")
   }
   
-  p_ind <- adegenet::ploidy(gl)
+  p_ind = adegenet::ploidy(gl)
   if (any(p_ind != 2)) {
     cli::cli_abort("The genlight object must be exclusively diploid.")
   }
 
   # Auto-detect Beagle JAR if not provided
   if (is.null(beagle_path)) {
-    beagle_path <- find_beagle_jar()
+    beagle_path = find_beagle_jar()
     if (is.null(beagle_path)) {
       cli::cli_abort(c(
         "Beagle JAR not found.",
@@ -666,7 +666,7 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
   
   # Auto-detect Java if not provided
   if (is.null(jre_path)) {
-    java_exe <- find_java()
+    java_exe = find_java()
     if (is.null(java_exe)) {
       cli::cli_abort(c(
         "Java not found on the system.",
@@ -677,13 +677,13 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
     cli::cli_inform("Using Java: {java_exe}")
   } else {
     # Legacy behavior: resolve from jre_path
-    java_exe <- file.path(jre_path, "bin", "java")
+    java_exe = file.path(jre_path, "bin", "java")
     if (.Platform$OS.type == "windows") {
-      java_exe <- paste0(java_exe, ".exe")
+      java_exe = paste0(java_exe, ".exe")
     }
     if (!file.exists(java_exe)) {
       if (file.exists(jre_path) && file.info(jre_path)$isdir == FALSE) {
-        java_exe <- jre_path
+        java_exe = jre_path
       } else {
         cli::cli_abort("Could not find java executable at {java_exe} or {jre_path}")
       }
@@ -693,17 +693,17 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
   # Default threads
 
   if (is.null(nthreads)) {
-    nthreads <- get_default_beagle_threads()
+    nthreads = get_default_beagle_threads()
   }
   
   if (!startsWith(memory, "-")) {
-    memory <- paste0("-", memory)
+    memory = paste0("-", memory)
   }
   
-  input_vcf <- tempfile(pattern = "beagle_in_", fileext = ".vcf.gz")
-  out_prefix <- tempfile(pattern = "beagle_out_")
-  output_vcf <- paste0(out_prefix, ".vcf.gz")
-  output_log <- paste0(out_prefix, ".log")
+  input_vcf = tempfile(pattern = "beagle_in_", fileext = ".vcf.gz")
+  out_prefix = tempfile(pattern = "beagle_out_")
+  output_vcf = paste0(out_prefix, ".vcf.gz")
+  output_log = paste0(out_prefix, ".log")
   
   on.exit({
     if (file.exists(input_vcf)) unlink(input_vcf)
@@ -712,27 +712,27 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
   }, add = TRUE)
   
   # Results are matched back by name, so names must exist and be unique
-  loc_names <- adegenet::locNames(gl)
-  ind_names <- adegenet::indNames(gl)
+  loc_names = adegenet::locNames(gl)
+  ind_names = adegenet::indNames(gl)
   if (is.null(loc_names) || is.null(ind_names) ||
       anyDuplicated(loc_names) > 0 || anyDuplicated(ind_names) > 0) {
     cli::cli_abort("Beagle imputation needs unique locus and individual names.")
   }
-  chrom <- adegenet::chromosome(gl)
-  pos <- adegenet::position(gl)
+  chrom = adegenet::chromosome(gl)
+  pos = adegenet::position(gl)
   if (is.null(chrom) || is.null(pos) || anyNA(chrom) || anyNA(pos)) {
     cli::cli_abort("Beagle imputation needs a chromosome and a position for every locus.")
   }
   
   # Beagle needs markers sorted by position within each chromosome
-  locus_order <- order(as.character(chrom), pos)
+  locus_order = order(as.character(chrom), pos)
   
   # Convert the gl to a vcf using write_vcf (located in utils.R)
   write_vcf(gl[, locus_order], input_vcf, na_rep = "./.")
   
   # Pass the arguments one by one. Paths are quoted and the other values were
   # checked above, so nothing else can reach the command line.
-  beagle_args <- c(
+  beagle_args = c(
     memory,
     "-jar", shQuote(beagle_path),
     paste0("gt=", shQuote(input_vcf)),
@@ -746,7 +746,7 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
   cli::cli_inform("Running Beagle on {length(loc_names)} loci and {length(ind_names)} individuals.")
   
   # Execute call
-  status <- system2(java_exe, beagle_args)
+  status = system2(java_exe, beagle_args)
   if (status != 0) {
     cli::cli_abort("Beagle execution failed with exit status {status}")
   }
@@ -756,31 +756,31 @@ impute_beagle <- function(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx
   }
   
   # Read back with cgiarGenomics read_vcf
-  imputed_gl <- read_vcf(output_vcf, ploidity = 2, na_reps = ".")
-  imp_m <- as.matrix(imputed_gl)
+  imputed_gl = read_vcf(output_vcf, ploidity = 2, na_reps = ".")
+  imp_m = as.matrix(imputed_gl)
   
   # Put the output in the order of the input before using cell positions
-  lost_loc <- setdiff(loc_names, colnames(imp_m))
-  lost_ind <- setdiff(ind_names, rownames(imp_m))
+  lost_loc = setdiff(loc_names, colnames(imp_m))
+  lost_ind = setdiff(ind_names, rownames(imp_m))
   if (length(lost_loc) > 0 || length(lost_ind) > 0) {
     cli::cli_abort(c(
       "The Beagle output lacks {length(lost_loc)} loci and {length(lost_ind)} individuals of the input, so results cannot be matched.",
       "i" = "Loci that share a position, or whose alleles are not A, C, G or T, cause this. Remove them first."
     ))
   }
-  imp_m <- imp_m[ind_names, loc_names, drop = FALSE]
+  imp_m = imp_m[ind_names, loc_names, drop = FALSE]
   
-  orig_m <- as.matrix(gl)
-  called <- !is.na(orig_m)
+  orig_m = as.matrix(gl)
+  called = !is.na(orig_m)
   if (any(imp_m[called] != orig_m[called], na.rm = TRUE)) {
     cli::cli_abort("The Beagle output changed calls that were not missing. Check the reference and alternative alleles.")
   }
   
-  idx_na <- which(!called)
-  imp_dict <- list()
+  idx_na = which(!called)
+  imp_dict = list()
   if (length(idx_na) > 0) {
-    imputed_values <- imp_m[idx_na]
-    imp_dict <- split(idx_na, imputed_values)
+    imputed_values = imp_m[idx_na]
+    imp_dict = split(idx_na, imputed_values)
   }
   return(imp_dict)
 }

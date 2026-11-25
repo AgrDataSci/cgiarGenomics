@@ -13,9 +13,11 @@
 #'   `ibs` holds the mean IBS score (diagonal set to 1), and `overlap` holds
 #'   the number of loci typed in both individuals.
 #'
-#' @details Runs in pure R and evaluates every pair twice, so time grows with
-#'   the square of the number of individuals. Use a subset of loci for large
-#'   panels, for example with [random_select_loci()].
+#' @details For whole dosages between 0 and `ploidy`, the scores come from
+#'   matrix products in base R, which is fast for hundreds of individuals and
+#'   thousands of loci. Memory still grows with the square of the number of
+#'   individuals. Other dosages fall back to a slower loop over pairs. The
+#'   name is kept for compatibility, the function no longer uses purrr.
 #' @export
 #'
 #' @examples
@@ -26,26 +28,52 @@
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' ibs_matrix_purrr(gl, ploidy = 2)
-ibs_matrix_purrr <- function(gl, ploidy) {
-  G <- t(as.matrix(gl))
-  cols <- as.data.frame(G, check.names = FALSE)
-  ids  <- colnames(cols)
-  score_list <- purrr::map(cols, function(x)
-    purrr::map_dbl(cols, function(y) ibs_dosage(x, y, ploidy)$score)
-  )
-  score_mat   <- do.call(cbind, score_list)
-  rownames(score_mat) <- ids
-  colnames(score_mat) <- ids
-  # numeric safety for diagonal (optional)
-  diag(score_mat) <- 1
+ibs_matrix_purrr = function(gl, ploidy) {
+  if (length(ploidy) != 1 || !is.numeric(ploidy) || ploidy <= 0) {
+    stop("ploidy must be a positive number")
+  }
+  G = as.matrix(gl)
+  ids = rownames(G)
+  called = !is.na(G)
+  W = called * 1
   
-  overlaps_list <- purrr::map(cols, function(x)
-    purrr::map_int(cols, function(y) ibs_dosage(x, y, ploidy)$overlap)
-  )
-  overlap_mat   <- do.call(cbind, overlaps_list)
-  rownames(overlap_mat) <- ids
-  colnames(overlap_mat) <- ids
-  return(list(ibs = score_mat, overlap = overlap_mat))
+  # number of loci typed in both individuals of each pair
+  overlap = tcrossprod(W)
+  
+  dosages = G[called]
+  whole = ploidy == round(ploidy) &&
+    all(dosages == round(dosages) & dosages >= 0 & dosages <= ploidy)
+  
+  if (whole) {
+    # For whole dosages, |x - y| is the number of thresholds k = 1..ploidy
+    # with x >= k and y < k, or the reverse. Summing those indicators over
+    # the loci typed in both individuals turns the distance into products.
+    dist = matrix(0, nrow(G), nrow(G))
+    for (k in seq_len(ploidy)) {
+      B = ((G >= k) & called) * 1
+      B[is.na(B)] = 0
+      BW = tcrossprod(B, W)
+      dist = dist + BW + t(BW) - 2 * tcrossprod(B)
+    }
+    score = 1 - dist / (ploidy * overlap)
+  } else {
+    score = matrix(NA_real_, nrow(G), nrow(G))
+    for (i in seq_len(nrow(G))) {
+      for (j in seq_len(i)) {
+        s = ibs_dosage(G[i, ], G[j, ], ploidy)$score
+        score[i, j] = s
+        score[j, i] = s
+      }
+    }
+  }
+  
+  score[overlap == 0] = NA
+  # numeric safety for diagonal
+  diag(score) = 1
+  storage.mode(overlap) = "integer"
+  dimnames(score) = list(ids, ids)
+  dimnames(overlap) = list(ids, ids)
+  return(list(ibs = score, overlap = overlap))
 }
 
 #' IBS score between two dosage vectors (internal)
@@ -54,22 +82,22 @@ ibs_matrix_purrr <- function(gl, ploidy) {
 #' @param ploidy Ploidy level.
 #' @return A list with `score` (mean IBS) and `overlap` (loci typed in both).
 #' @noRd
-ibs_dosage <- function(x, y, ploidy) {
+ibs_dosage = function(x, y, ploidy) {
   if (length(x) != length(y)) stop("x and y must have the same length")
   if (length(ploidy) != 1 || !is.numeric(ploidy) || ploidy <= 0) {
     stop("ploidy must be a positive number")
   }
   # mask non-missing pairs
-  ok <- !is.na(x) & !is.na(y)
-  n_ok <- sum(ok)
+  ok = !is.na(x) & !is.na(y)
+  n_ok = sum(ok)
   if (n_ok == 0L) return(list(score = NA, overlap = 0L))
   
-  xv <- x[ok]; yv <- y[ok]
+  xv = x[ok]; yv = y[ok]
   
   # locus-wise IBS: 1 - |Δdosage| / P
-  ibs_locus <- 1 - abs(xv - yv) / ploidy
+  ibs_locus = 1 - abs(xv - yv) / ploidy
   # numeric safety clamp
-  ibs_locus <- pmin(pmax(ibs_locus, 0), 1)
+  ibs_locus = pmin(pmax(ibs_locus, 0), 1)
 
   list(score = mean(ibs_locus), overlap = n_ok)
 }
@@ -97,12 +125,12 @@ ibs_dosage <- function(x, y, ploidy) {
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_loc_missing(gl)
-get_loc_missing <- function(gl) {
+get_loc_missing = function(gl) {
   # Get the number of occurrences of NAs (missing data) for each marker
-  NA_counts <- adegenet::glNA(gl)
+  NA_counts = adegenet::glNA(gl)
   
   # Divide the NA counts by the total number of samples to get the missing rate
-  NA_counts <- NA_counts / adegenet::nInd(gl)/max(adegenet::ploidy(gl))
+  NA_counts = NA_counts / adegenet::nInd(gl)/max(adegenet::ploidy(gl))
   
   return(NA_counts)
 }
@@ -128,12 +156,12 @@ get_loc_missing <- function(gl) {
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_ind_missing(gl)
-get_ind_missing <- function(gl) {
+get_ind_missing = function(gl) {
   # Convert the genlight object to a matrix and identify missing genotype calls
-  mt <- is.na(as.matrix(gl))
+  mt = is.na(as.matrix(gl))
   
   # Calculate the proportion of missing data for each individual (row)
-  ind_miss <- Matrix::rowSums(mt) / adegenet::nLoc(gl)
+  ind_miss = rowSums(mt) / adegenet::nLoc(gl)
   
   return(ind_miss)
 }
@@ -159,15 +187,15 @@ get_ind_missing <- function(gl) {
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_overall_missingness(gl)
-get_overall_missingness <- function(gl) {
+get_overall_missingness = function(gl) {
   # Convert the genlight object to a matrix
-  mt <- as.matrix(gl)
+  mt = as.matrix(gl)
   
   # Identify missing genotype calls
-  mt <- is.na(mt)
+  mt = is.na(mt)
   
   # Calculate the overall missing rate
-  overall_miss <- sum(mt) / (nrow(mt) * ncol(mt))
+  overall_miss = sum(mt) / (nrow(mt) * ncol(mt))
   
   return(overall_miss)
 }
@@ -197,14 +225,14 @@ get_overall_missingness <- function(gl) {
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_heterozygosity_metrics(gl, ploidy = 2)
-get_heterozygosity_metrics <- function(gl, ploidy = 2){
+get_heterozygosity_metrics = function(gl, ploidy = 2){
   # Boolean matrix of genotype calls where 0 > dosage < ploidy
-  mt <- as.matrix(gl)
-  het_ind_loc <- mt > 0 & mt < ploidy
+  mt = as.matrix(gl)
+  het_ind_loc = mt > 0 & mt < ploidy
   # share of heterozygotes among the calls that are not missing
-  called <- !is.na(mt)
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(called)
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(called)
+  called = !is.na(mt)
+  het_loc = colSums(het_ind_loc , na.rm = T)/colSums(called)
+  het_ind = rowSums(het_ind_loc , na.rm = T)/rowSums(called)
   return(list(het_ind = het_ind, het_loc = het_loc))
 }
 
@@ -227,11 +255,11 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_loc_heterozygosity(gl)
-get_loc_heterozygosity <- function(gl, ploidy = 2){
-  mt <- as.matrix(gl)
-  het_ind_loc <- mt > 0 & mt < ploidy
+get_loc_heterozygosity = function(gl, ploidy = 2){
+  mt = as.matrix(gl)
+  het_ind_loc = mt > 0 & mt < ploidy
   # share of heterozygotes among the calls that are not missing
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(!is.na(mt))
+  het_loc = colSums(het_ind_loc , na.rm = T)/colSums(!is.na(mt))
   return(het_loc)
 }
 
@@ -254,11 +282,11 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_ind_heterozygosity(gl)
-get_ind_heterozygosity <- function(gl, ploidy = 2){
-  mt <- as.matrix(gl)
-  het_ind_loc <- mt > 0 & mt < ploidy
+get_ind_heterozygosity = function(gl, ploidy = 2){
+  mt = as.matrix(gl)
+  het_ind_loc = mt > 0 & mt < ploidy
   # share of heterozygotes among the calls that are not missing
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(!is.na(mt))
+  het_ind = rowSums(het_ind_loc , na.rm = T)/rowSums(!is.na(mt))
   return(het_ind)
 }
 
@@ -288,10 +316,10 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 #'             dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_maf(gl)
-get_maf <- function(gl, ploidy = 2){
+get_maf = function(gl, ploidy = 2){
   # glMean() already returns the alternative allele frequency
-  alf <- adegenet::glMean(gl)
-  maf <- ifelse(alf > 0.5, 1 - alf, alf)
+  alf = adegenet::glMean(gl)
+  maf = ifelse(alf > 0.5, 1 - alf, alf)
   return(maf)
 }
 
@@ -303,10 +331,10 @@ get_maf <- function(gl, ploidy = 2){
 #' @param gl A genlight object with `other$loc.metrics`.
 #' @return A numeric vector with one value per locus.
 #' @noRd
-get_inbreeding <- function(gl){
-  p <- 1 - gl@other$loc.metrics$maf
-  he <- 2 * gl@other$loc.metrics$maf * p
-  Fis <- 1 - (gl@other$loc.metrics$loc_het/he)
+get_inbreeding = function(gl){
+  p = 1 - gl@other$loc.metrics$maf
+  he = 2 * gl@other$loc.metrics$maf * p
+  Fis = 1 - (gl@other$loc.metrics$loc_het/he)
   return(Fis)
 }
 
@@ -339,18 +367,18 @@ get_inbreeding <- function(gl){
 #' gl = recalc_metrics(gl)
 #' gl@other$loc.metrics
 #' gl@other$ind.metrics
-recalc_metrics <- function(gl){
+recalc_metrics = function(gl){
 
-  gl@other$loc.metrics <- data.frame(
+  gl@other$loc.metrics = data.frame(
     maf = get_maf(gl, max(adegenet::ploidy(gl))),
     loc_miss = get_loc_missing(gl),
     loc_het = get_loc_heterozygosity(gl, max(adegenet::ploidy(gl)))
   )
   
   # Use already calculated loc stats
-  gl@other$loc.metrics$loc_Fis <- get_inbreeding(gl)
+  gl@other$loc.metrics$loc_Fis = get_inbreeding(gl)
   
-  gl@other$ind.metrics <- data.frame(
+  gl@other$ind.metrics = data.frame(
                                      ind_miss = get_ind_missing(gl),
                                      ind_het = get_ind_heterozygosity(gl, max(adegenet::ploidy(gl)))
                                      )
@@ -379,14 +407,14 @@ recalc_metrics <- function(gl){
 #' gl = new("genlight", mt, ploidy = 2)
 #' gl = recalc_metrics(gl)
 #' get_overall_summary(gl)
-get_overall_summary <- function(gl){
-  ninds <- adegenet::nInd(gl)
-  nlocs <- adegenet::nLoc(gl)
-  overall_missiness <- mean(gl@other$ind.metrics$ind_miss)
-  overall_heterozygosity <- mean(gl@other$ind.metrics$ind_het, na.rm = T)
-  overall_maf <- mean(gl@other$loc.metrics$maf, na.rm = T)
+get_overall_summary = function(gl){
+  ninds = adegenet::nInd(gl)
+  nlocs = adegenet::nLoc(gl)
+  overall_missiness = mean(gl@other$ind.metrics$ind_miss)
+  overall_heterozygosity = mean(gl@other$ind.metrics$ind_het, na.rm = T)
+  overall_maf = mean(gl@other$loc.metrics$maf, na.rm = T)
   
-  out <- list(
+  out = list(
     nind = ninds,
     nloc = nlocs,
     ov_miss = overall_missiness,

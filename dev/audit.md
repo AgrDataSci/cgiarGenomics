@@ -8,14 +8,14 @@ Every function in `R/` was read line by line. Claims about adegenet and vcfR beh
 
 ## Status of fixes
 
-PR #3 on the AgrDataSci fork (25 November 2026) brings the package to version 1.0.3. It fixes the findings marked "fixed in PR #3" below and the additional findings of the external review, each with tests in `tests/testthat/`. The `tests` workflow runs the unit tests and `R CMD check` on GitHub Actions for every pull request, with vcfR, randomForest, dartR.base and Java installed, so the Beagle, Random Forest and DArTSeq paths are exercised.
+PR #3 on the AgrDataSci fork (25 November 2026) brings the package to version 1.0.3, and PR #5 to 2.0.0. It fixes the findings marked "fixed in PR #3" below and the additional findings of the external review, each with tests in `tests/testthat/`. The `tests` workflow runs the unit tests and `R CMD check` on GitHub Actions for every pull request, with vcfR, randomForest, dartR.base and Java installed, so the Beagle, Random Forest and DArTSeq paths are exercised.
 
 The tests were written against the fixed code. They were not run against version 1.0.2, so their failure before the fix rests on reading the code and on the external review, which ran version 1.0.2 and observed the defects.
 
 | Still open | Finding |
 |---|---|
 | `loc_Fis` assumes a diploid at every ploidy | M3 |
-| Metrics and IBS are slow and memory-hungry on large panels | M4 |
+| Metrics build dense matrices on large panels | M4 |
 | Mendelian errors use the later-generation rule only | P2 |
 | `apply_bioflow_modifications()` does not replay imputation | B2 |
 | Loci removed for having no data are not listed in the imputation log | I6 |
@@ -76,7 +76,7 @@ The full list follows, grouped by area, with file and line.
 
 **M3. Fis assumes diploid Hardy-Weinberg (Medium, confirmed, open).** `get_inbreeding()` uses `2pq` at line 165 for every ploidy, and inherits the MAF error from M1. For polyploids, the expected heterozygosity is `1 - p^k - q^k`, where `k` is ploidy. Report Fis as diploid only until that is in place.
 
-**M4. Metrics are slow on large panels (Low, confirmed, open).** `recalc_metrics()` converts the genlight to a dense matrix three times per call, and filtering calls it after every step. `ibs_matrix_purrr()` computes each pair twice in pure R. Convert once per call, and compute only the upper triangle.
+**M4. Metrics are slow on large panels (Low, confirmed, partly fixed in PR #5).** `ibs_matrix_purrr()` now uses matrix products. `recalc_metrics()` still builds dense matrices. `recalc_metrics()` converts the genlight to a dense matrix three times per call, and filtering calls it after every step. `ibs_matrix_purrr()` computes each pair twice in pure R. Convert once per call, and compute only the upper triangle.
 
 ## Filtering
 

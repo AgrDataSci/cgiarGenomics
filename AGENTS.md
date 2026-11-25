@@ -23,23 +23,23 @@ cgiarGenomics is an R package that reads SNP marker data (hapmap, VCF, DArTSeq, 
 | Impute missing calls | `impute_gl(gl, ploidity, method = "frequency")` | `method` has no default. Prefer `"beagle"` for diploids with dense mapped markers, `"frequency"` otherwise. Set a seed with `set.seed()` for `"frequency"` and report it. |
 | Benchmark an imputation method | `set_fraction_na()` then `get_accuracy(ref, imputed, masked_gl = masked)` | Always pass `masked_gl`, and report the number of scored cells from the `n_scored` attribute. |
 | Collapse replicate samples | `merge_duplicate_inds(gl, sample_dictionary)` | Individuals are renamed to their `designation_id`. Ties between replicates become missing. |
-| Identity or purity between samples | `ibs_matrix_purrr(gl, ploidy)` | Slow, quadratic in individuals. Thin loci first with `random_select_loci()`. |
+| Identity or purity between samples | `ibs_matrix_purrr(gl, ploidy)` | Matrix products in base R, despite the name. Memory grows with the square of the number of individuals. |
 | Pedigree checks | `get_mendelian_error_counts(gl, trios)` | Diploid only, and the count is a lower bound. |
 | Export | `write_vcf(gl, path)` | Unphased GT only, in the marker order of the object. Sort by chromosome and position first for tools that need it. |
 
 ## Known issues
 
-Version 1.0.3 fixes the defects that the two reviews of November 2026 found in version 1.0.2. [`dev/audit.md`](dev/audit.md) records each finding with its status and [`NEWS.md`](NEWS.md) lists the results that change. Check `packageVersion("cgiarGenomics")` first.
+Version 2.0.0 fixes the defects that the two reviews of November 2026 found in version 1.0.2. [`dev/audit.md`](dev/audit.md) records each finding with its status and [`NEWS.md`](NEWS.md) lists the results that change. Check `packageVersion("cgiarGenomics")` first.
 
-On version 1.0.2 or earlier, MAF, heterozygosity, Fis, Random Forest imputation, replicate merging and filters that nothing passes give wrong results. Tell the user to update before running the analysis, and to rerun earlier analyses that used them.
+On version 1.x, MAF, heterozygosity, Fis, Random Forest imputation, replicate merging and filters that nothing passes give wrong results. Tell the user to update before running the analysis, and to rerun earlier analyses that used them.
 
-These stay open in version 1.0.3. Tell the user when one applies to their analysis.
+These stay open in version 2.0.0. Tell the user when one applies to their analysis.
 
 - **`loc_Fis` assumes a diploid (M3).** Do not interpret or filter on `loc_Fis` in polyploids.
 - **`apply_bioflow_modifications()` replays removals only (B2).** It warns when the table holds imputation rows and does not write the imputed values back.
 - **Mendelian error counts are a lower bound for F1 trios (P2).** The rule is the conservative one for later generations.
 - **Loci with no data disappear during imputation.** `impute_gl()` removes them with a warning, and `log` does not list them. Compare `locNames()` before and after.
-- **Metrics are slow on large panels (M4).** `recalc_metrics()` and `ibs_matrix_purrr()` build dense matrices. Thin or split large panels.
+- **Metrics use dense matrices (M4).** `recalc_metrics()` and `ibs_matrix_purrr()` hold the full dosage matrix in memory. Thin or split very large panels.
 
 ## Pitfalls
 
@@ -55,7 +55,8 @@ These stay open in version 1.0.3. Tell the user when one applies to their analys
 
 ## Changing the package
 
-- Follow the style of the file you edit. Tests use invented sample and marker names, built with the helpers in `tests/testthat/helper-genlight.R`.
+- Use `=` for assignment. Keep `<-` only where an assignment sits inside a function call, as in `expect_warning(out <- f(x))`. Tests use invented sample and marker names, built with the helpers in `tests/testthat/helper-genlight.R`.
+- Prefer base R. The package imports only cli, data.table, adegenet, methods, stats and utils. Do not add a dependency for what base R does in a few lines, and discuss any new import in the pull request.
 - Document with roxygen and run `devtools::document()`. It writes `NAMESPACE` and `man/`, so never edit either by hand. Export a function by tagging it `@export`. Imports are declared in `R/cgiarGenomics-package.R`. Markdown is enabled in roxygen.
 - Every fix needs a test in `tests/testthat/` that fails before the fix and passes after it. Run `devtools::test()` and `devtools::check()`, and report what was actually run. The `tests` workflow runs both on every pull request. Never claim a change works without running it.
 - Changes that alter results (dosages, metrics, filters, imputed values) go in `NEWS.md` with the reason.

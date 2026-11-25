@@ -145,11 +145,11 @@ The metrics sit in the `other` slot of the object, as `loc.metrics` (MAF, missin
 
 ## Status
 
-Version 1.0.3 is the development version on this branch. It follows two reviews of version 1.0.2 in November 2026, a code audit and an external review that ran the package. Both found defects that changed results without an error, among them minor allele frequencies divided by ploidy twice, Random Forest imputation that wrote impossible dosages, and filters that were skipped when nothing passed them.
+Version 2.0.0 is the development version on this branch. It follows two reviews of version 1.0.2 in November 2026, a code audit and an external review that ran the package. Both found defects that changed results without an error, among them minor allele frequencies divided by ploidy twice, Random Forest imputation that wrote impossible dosages, and filters that were skipped when nothing passed them.
 
-Version 1.0.3 fixes those defects. Each fix has a unit test, and the tests and `R CMD check` run on every pull request. [`NEWS.md`](NEWS.md) lists every result that changes, and [`dev/audit.md`](dev/audit.md) records each finding with its status.
+Version 2.0.0 fixes those defects, drops eight dependencies in favour of base R, and computes identity by state with matrix products. Each fix has a unit test, and the tests and `R CMD check` run on every pull request. [`NEWS.md`](NEWS.md) lists every breaking change and every result that changes, and [`dev/audit.md`](dev/audit.md) records each finding with its status.
 
-Results from version 1.0.2 that used a MAF filter, marker thinning, Fis, heterozygosity, Random Forest imputation or replicate merging differ from results of version 1.0.3. Rerun those analyses before relying on them.
+Results from version 1.x that used a MAF filter, marker thinning, Fis, heterozygosity, Random Forest imputation or replicate merging differ from results of version 2.0.0. Rerun those analyses before relying on them.
 
 A few findings stay open. `loc_Fis` assumes a diploid, `apply_bioflow_modifications()` replays removals only, and the argument for ploidy is spelled `ploidity` in some functions and `ploidy` in others.
 

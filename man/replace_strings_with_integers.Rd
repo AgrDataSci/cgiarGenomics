@@ -25,8 +25,8 @@ If a string in the second list does not have a corresponding key in the first li
 it will be replaced with NA.
 }
 \examples{
-lookup <- c(A = 1, B = 2, C = 3)
-strings <- c("B", "A", "D", "C")
+lookup = c(A = 1, B = 2, C = 3)
+strings = c("B", "A", "D", "C")
 cgiarGenomics:::replace_strings_with_integers(lookup, strings)  # Returns list(2, 1, NA, 3)
 }
 \keyword{internal}

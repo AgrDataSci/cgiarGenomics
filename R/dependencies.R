@@ -6,7 +6,7 @@
 # copy-pasteable install command instead of a cryptic namespace error.
 
 # Registry of optional packages: what they unlock and how to install them.
-.optional_deps <- list(
+.optional_deps = list(
   vcfR = list(
     feature = "reading and writing VCF files",
     functions = "read_vcf(), impute_beagle()",
@@ -40,12 +40,12 @@
 #' @param pkg Name of the package to check.
 #' @return Invisibly TRUE if available; aborts otherwise.
 #' @keywords internal
-require_optional <- function(pkg) {
+require_optional = function(pkg) {
   if (requireNamespace(pkg, quietly = TRUE)) {
     return(invisible(TRUE))
   }
 
-  info <- .optional_deps[[pkg]]
+  info = .optional_deps[[pkg]]
 
   if (is.null(info)) {
     cli::cli_abort(c(
@@ -77,8 +77,8 @@ require_optional <- function(pkg) {
 #' \dontrun{
 #' check_dependencies()
 #' }
-check_dependencies <- function() {
-  status <- data.frame(
+check_dependencies = function() {
+  status = data.frame(
     package = names(.optional_deps),
     feature = vapply(.optional_deps, `[[`, character(1), "feature"),
     installed = vapply(
@@ -132,11 +132,11 @@ check_dependencies <- function() {
 #' # Only what you need
 #' install_optional_deps("vcfR")
 #' }
-install_optional_deps <- function(which = names(.optional_deps),
+install_optional_deps = function(which = names(.optional_deps),
                                   ask = interactive()) {
-  which <- match.arg(which, choices = names(.optional_deps), several.ok = TRUE)
+  which = match.arg(which, choices = names(.optional_deps), several.ok = TRUE)
 
-  missing <- which[!vapply(which, requireNamespace, logical(1), quietly = TRUE)]
+  missing = which[!vapply(which, requireNamespace, logical(1), quietly = TRUE)]
 
   if (length(missing) == 0) {
     cli::cli_alert_success("All requested optional dependencies are already installed.")
@@ -146,7 +146,7 @@ install_optional_deps <- function(which = names(.optional_deps),
   cli::cli_alert_info("Missing optional packages: {.pkg {missing}}")
 
   if (ask) {
-    answer <- readline("Install them now? [y/N] ")
+    answer = readline("Install them now? [y/N] ")
     if (!tolower(trimws(answer)) %in% c("y", "yes")) {
       cli::cli_alert_info("Aborted. Nothing was installed.")
       return(invisible(character(0)))
@@ -155,8 +155,8 @@ install_optional_deps <- function(which = names(.optional_deps),
 
   # dartR.base needs two Bioconductor packages before it can be installed.
   if ("dartR.base" %in% missing) {
-    bioc_deps <- c("SNPRelate", "snpStats")
-    bioc_missing <- bioc_deps[
+    bioc_deps = c("SNPRelate", "snpStats")
+    bioc_missing = bioc_deps[
       !vapply(bioc_deps, requireNamespace, logical(1), quietly = TRUE)
     ]
 
@@ -172,7 +172,7 @@ install_optional_deps <- function(which = names(.optional_deps),
         ))
       }
       cli::cli_alert_info("Installing Bioconductor dependencies: {.pkg {bioc_missing}}")
-      BiocManager <- asNamespace("BiocManager")
+      BiocManager = asNamespace("BiocManager")
       BiocManager$install(bioc_missing, update = FALSE, ask = FALSE)
     }
   }
@@ -180,7 +180,7 @@ install_optional_deps <- function(which = names(.optional_deps),
   cli::cli_alert_info("Installing from CRAN: {.pkg {missing}}")
   utils::install.packages(missing)
 
-  still_missing <- missing[
+  still_missing = missing[
     !vapply(missing, requireNamespace, logical(1), quietly = TRUE)
   ]
 
