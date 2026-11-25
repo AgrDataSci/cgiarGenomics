@@ -13,29 +13,33 @@ cgiarGenomics is an R package that reads SNP marker data (hapmap, VCF, DArTSeq, 
 
 | Task | Function | Notes |
 |---|---|---|
-| Read a hapmap file | `read_hapmap(path, ploidity, sep = "")` | Tab-separated, samples from column 12, calls written in full (`AG`, `AAGG`). Keep `sep = ""`. |
-| Read a VCF | `read_vcf(path, ploidity, sep = "/")` | Needs vcfR. Use `sep = "\\|"` for phased files. |
+| Read a hapmap file | `read_hapmap(path, ploidity, sep = "")` | Tab-separated, samples from column 12, calls written in full (`AG`, `AAGG`). Set `sep` when calls carry `/` or `|`. Single IUPAC codes are decoded for diploids. |
+| Read a VCF | `read_vcf(path, ploidity)` | Needs vcfR. Reads phased and unphased calls. |
 | Read DArTag reports (any ploidy) | `read_DArTag_count_dosage(dosage_path, counts_path, ploidity)` | Needs both the dosage report and the collapsed counts file. Check the row and column defaults against the file. |
 | Read a DArTSeq SNP report | `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Needs dartR.base, and SNPRelate and snpStats from Bioconductor. |
 | Quality summary | `get_overall_summary(gl)` | Reads metrics stored in `gl@other`. Run `recalc_metrics(gl)` first on objects not built by this package. |
 | Per-locus or per-individual metrics | `gl@other$loc.metrics`, `gl@other$ind.metrics` | Or `get_loc_missing()`, `get_ind_missing()`, `get_maf()`, `get_heterozygosity_metrics()`. |
-| Filter loci and individuals | `apply_sequence_filtering(gl, steps)` | Steps are lists of `param`, `operator`, `threshold`. Order matters, metrics are recalculated after each step. |
-| Impute missing calls | `impute_gl(gl, ploidity, method = "frequency")` | `method` has no default. Prefer `"beagle"` for diploids with dense markers sorted by position (known issue I5), `"frequency"` otherwise. |
-| Benchmark an imputation method | `set_fraction_na()` then `get_accuracy()` | See known issue I2 before reporting accuracy. |
-| Collapse replicate samples | `merge_duplicate_inds(gl, sample_dictionary)` | See known issue P1. |
+| Filter loci and individuals | `apply_sequence_filtering(gl, steps)` | Steps are lists of `param`, `operator`, `threshold`. Order matters, metrics are recalculated after each step. A step that nothing passes stops with an error. |
+| Impute missing calls | `impute_gl(gl, ploidity, method = "frequency")` | `method` has no default. Prefer `"beagle"` for diploids with dense mapped markers, `"frequency"` otherwise. Set a seed with `set.seed()` for `"frequency"` and report it. |
+| Benchmark an imputation method | `set_fraction_na()` then `get_accuracy(ref, imputed, masked_gl = masked)` | Always pass `masked_gl`, and report the number of scored cells from the `n_scored` attribute. |
+| Collapse replicate samples | `merge_duplicate_inds(gl, sample_dictionary)` | Individuals are renamed to their `designation_id`. Ties between replicates become missing. |
 | Identity or purity between samples | `ibs_matrix_purrr(gl, ploidy)` | Slow, quadratic in individuals. Thin loci first with `random_select_loci()`. |
 | Pedigree checks | `get_mendelian_error_counts(gl, trios)` | Diploid only, and the count is a lower bound. |
-| Export | `write_vcf(gl, path)` | Unphased GT only. Sort by chromosome and position before using the file with Beagle or other tools. |
+| Export | `write_vcf(gl, path)` | Unphased GT only, in the marker order of the object. Sort by chromosome and position first for tools that need it. |
 
 ## Known issues
 
-The audit in [`dev/audit.md`](dev/audit.md) lists every defect found in version 1.0.2, with location and fix. Version 1.0.3 fixes M1 (MAF), I1 (Random Forest dosages), B1 (`apply_bioflow_modifications()`) and R2 (DArTSeq reading). Check `packageVersion("cgiarGenomics")` first. On 1.0.2 or earlier, do not filter on `maf`, do not use `method = "random_forest"`, and tell the user to update. Until the remaining ones are fixed, act as follows, and tell the user when one applies to their analysis.
+Version 1.0.3 fixes the defects that the two reviews of November 2026 found in version 1.0.2. [`dev/audit.md`](dev/audit.md) records each finding with its status and [`NEWS.md`](NEWS.md) lists the results that change. Check `packageVersion("cgiarGenomics")` first.
 
-- **A filter step that nothing passes is skipped (F1).** After `apply_sequence_filtering()`, check `filt_log` and report any step whose `index` is empty.
-- **Duplicated marker IDs survive (R1).** Check `anyDuplicated(adegenet::locNames(gl))` after reading.
-- **Imputation accuracy is inflated (I2).** Score only the cells that `set_fraction_na()` masked, by comparing the matrices yourself.
-- **`apply_bioflow_modifications()` ignores imputation rows (B2).** It replays removals only. Imputed values recorded in Bioflow are not written back.
-- **Separators in hapmap calls abort the reader (R4).** Remove `/` or `|` from hapmap calls before reading, or keep `sep = ""`.
+On version 1.0.2 or earlier, MAF, heterozygosity, Fis, Random Forest imputation, replicate merging and filters that nothing passes give wrong results. Tell the user to update before running the analysis, and to rerun earlier analyses that used them.
+
+These stay open in version 1.0.3. Tell the user when one applies to their analysis.
+
+- **`loc_Fis` assumes a diploid (M3).** Do not interpret or filter on `loc_Fis` in polyploids.
+- **`apply_bioflow_modifications()` replays removals only (B2).** It warns when the table holds imputation rows and does not write the imputed values back.
+- **Mendelian error counts are a lower bound for F1 trios (P2).** The rule is the conservative one for later generations.
+- **Loci with no data disappear during imputation.** `impute_gl()` removes them with a warning, and `log` does not list them. Compare `locNames()` before and after.
+- **Metrics are slow on large panels (M4).** `recalc_metrics()` and `ibs_matrix_purrr()` build dense matrices. Thin or split large panels.
 
 ## Pitfalls
 
@@ -44,15 +48,16 @@ The audit in [`dev/audit.md`](dev/audit.md) lists every defect found in version 
 - **Markers are removed while reading.** Readers drop multi-allelic markers, indels, markers without alleles and markers sharing a position. Report the counts from the reader messages, so the user knows what was lost.
 - **Metrics go stale.** Any subset made outside the package (`gl[, keep]`) leaves `gl@other` describing the old object. Run `recalc_metrics()` before filtering or summarising.
 - **Missingness is a rate.** All thresholds are between 0 and 1, and `filter_gl()` refuses values above 1.
-- **Beagle is diploid only.** For polyploids, use frequency imputation and say that it ignores linkage.
+- **Beagle is diploid only.** For polyploids, use frequency imputation and say that it ignores linkage. Beagle needs unique locus names, a chromosome and position for every locus, and alleles written as A, C, G or T.
+- **Beagle settings are checked.** `memory` must look like `"Xmx4g"`. Do not build it from free text typed by a user.
+- **Beagle has its own licence.** The bundled JAR is under the GNU GPL version 3 or later, see `inst/extdata/README.md`. Tell users who redistribute the package.
 - **Sample names may identify germplasm or farmers.** Do not put real sample names or private data in examples, issues or test files.
 
 ## Changing the package
 
-- Follow the style of the file you edit.
-- `NAMESPACE` is written by hand. When you export a function, add it to `NAMESPACE` as well as tagging it `@export`.
-- Document with roxygen and run `devtools::document()`. Never edit files in `man/` by hand. Markdown is enabled in roxygen.
-- Every fix needs a test in `tests/testthat/` that fails before the fix and passes after it. Run `devtools::test()` and `devtools::check()`, and report what was actually run. Never claim a change works without running it.
+- Follow the style of the file you edit. Tests use invented sample and marker names, built with the helpers in `tests/testthat/helper-genlight.R`.
+- Document with roxygen and run `devtools::document()`. It writes `NAMESPACE` and `man/`, so never edit either by hand. Export a function by tagging it `@export`. Imports are declared in `R/cgiarGenomics-package.R`. Markdown is enabled in roxygen.
+- Every fix needs a test in `tests/testthat/` that fails before the fix and passes after it. Run `devtools::test()` and `devtools::check()`, and report what was actually run. The `tests` workflow runs both on every pull request. Never claim a change works without running it.
 - Changes that alter results (dosages, metrics, filters, imputed values) go in `NEWS.md` with the reason.
 - Bioflow calls these functions directly. Keep function names, argument names and return structures unchanged, or agree the change with the Bioflow team and record it in `NEWS.md`.
 - When you fix a finding from `dev/audit.md`, mark it as fixed there with the pull request number, and remove the "Known issue" section from the function's roxygen.

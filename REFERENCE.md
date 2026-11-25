@@ -13,8 +13,8 @@ All readers return a [genlight](https://github.com/thibautjombart/adegenet) obje
 
 | Function | What it does | Ploidy |
 |---|---|---|
-| `read_hapmap(path, ploidity = 2, sep = "")` | Reads a tab-separated hapmap file. The first allele in `alleles` is the reference. Samples start at column 12. ⚠ (R4, R6) | any |
-| `read_vcf(path, ploidity = 2, na_reps = c("-", "./."), sep = "/")` | Reads a VCF, compressed or not, through vcfR. Use `sep = "\\|"` for phased files. ⚠ (R5) | any |
+| `read_hapmap(path, ploidity = 2, sep = "")` | Reads a tab-separated hapmap file. The first allele in `alleles` is the reference. Samples start at column 12. Set `sep` to `"/"` or `"|"` when calls carry a separator. Single IUPAC codes are decoded for diploids. | any |
+| `read_vcf(path, ploidity = 2, na_reps = c("-", "./."), sep = "/")` | Reads a VCF, compressed or not, through vcfR. Phased and unphased calls are both read. `sep` is kept for compatibility and not used. | any |
 | `read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)` | Reads a standard DArTSeq SNP report through dartR.base and keeps mapped SNPs. | diploid |
 | `read_DArTag_count_dosage(dosage_path, counts_path, ploidity, ...)` | Reads a DArTag dosage report with its collapsed allele counts file. Alleles come from the single base that differs between tags. | any |
 | `read_one_row_dart_gt_data(path, sample.name.row, first.data.row, first.data.col, snp_id_col)` *internal* | Splits a one-row-per-variant DArT report into dosages and metadata. Used by `read_DArTag_count_dosage()`. | any |
@@ -32,18 +32,18 @@ Every reader drops markers that are not bi-allelic SNPs, that lack alleles, or t
 | `get_ind_missing(gl)` | Missing rate per individual. |
 | `get_overall_missingness(gl)` | Share of missing calls in the whole matrix. |
 | `get_maf(gl, ploidy = 2)` | Minor allele frequency per locus. `ploidy` is kept for compatibility and not used. |
-| `get_loc_heterozygosity(gl, ploidy = 2)` | Share of heterozygous calls per locus. ⚠ (M2) |
-| `get_ind_heterozygosity(gl, ploidy = 2)` | Share of heterozygous calls per individual. ⚠ (M2) |
-| `get_heterozygosity_metrics(gl, ploidy = 2)` | Both of the above in one list (`het_ind`, `het_loc`). ⚠ (M2) |
+| `get_loc_heterozygosity(gl, ploidy = 2)` | Share of heterozygotes among called genotypes, per locus. |
+| `get_ind_heterozygosity(gl, ploidy = 2)` | Share of heterozygotes among called genotypes, per individual. |
+| `get_heterozygosity_metrics(gl, ploidy = 2)` | Both of the above in one list (`het_ind`, `het_loc`). |
 
 ## Filter
 
 | Function | What it does |
 |---|---|
-| `apply_sequence_filtering(gl, filt_sequence)` | Applies a list of filter steps in order, recalculating metrics after each one, then removes loci and individuals with no data. Returns `gl` and `filt_log`. ⚠ (F1, a step that nothing passes is skipped) |
+| `apply_sequence_filtering(gl, filt_sequence)` | Applies a list of filter steps in order, recalculating metrics after each one, then removes loci and individuals with no data. Returns `gl` and `filt_log`. Stops with an error of class `cgiarGenomics_empty_filter` when nothing passes a step. |
 | `filter_gl(gl, parameter, threshold, comparison_operator)` | Evaluates one step without changing the object. Returns the kept positions and removed names. |
 | `get_parameter_margin(gl, param_name)` | Says whether a metric acts on loci (`"loc"`) or individuals (`"ind"`). |
-| `random_select_loci(gl, ind_miss, loc_miss, maf, size, seed)` | Filters, then samples `size` loci in proportion to chromosome size. ⚠ (F3) |
+| `random_select_loci(gl, ind_miss, loc_miss, maf, size, seed = NULL)` | Filters, then samples `size` loci in proportion to chromosome size. |
 
 A filter step is a list with `param`, `operator` and `threshold`.
 
@@ -62,11 +62,11 @@ Valid `param` values are `maf`, `loc_miss`, `loc_het`, `loc_Fis`, `ind_miss` and
 
 | Function | What it does |
 |---|---|
-| `impute_gl(gl, ploidity = 2, method, ...)` | Imputes missing dosages with `"frequency"`, `"random_forest"` or `"beagle"`. Returns `gl` and `log`, the imputed cells grouped by dosage. ⚠ (I6) |
-| `impute_beagle(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx4g", burnin = 3, iterations = 12, seed = -99999, nthreads = NULL)` | Runs Beagle 5 on a temporary VCF. Diploids only. Usually called through `impute_gl(method = "beagle")`. ⚠ (I4, I5) |
+| `impute_gl(gl, ploidity = 2, method, ...)` | Imputes missing dosages with `"frequency"`, `"random_forest"` or `"beagle"`. Returns `gl` and `log`, the imputed cells grouped by dosage. An object with no missing calls comes back with an empty log. Loci with no data are removed with a warning. |
+| `impute_beagle(gl, jre_path = NULL, beagle_path = NULL, memory = "Xmx4g", burnin = 3, iterations = 12, seed = -99999, nthreads = NULL)` | Runs Beagle 5.5 on a temporary VCF sorted by position, and matches the result back by name. Diploids only. `memory` must be a Java memory setting. Usually called through `impute_gl(method = "beagle")`. |
 | `i_freq_impute(q_frq, ploidity = 2)` *internal* | Draws one dosage from an allele frequency. |
-| `set_fraction_na(gl, fraction = 0.1)` | Masks a random share of calls to test imputation. ⚠ (I3) |
-| `get_accuracy(ref_gl, imp_gl)` | Share of reference calls reproduced, per locus. ⚠ (I2, inflated) |
+| `set_fraction_na(gl, fraction = 0.1)` | Masks a random share of the called genotypes to test imputation. Keeps names, positions and alleles, and stores the masked cells in `other$masked_cells`. |
+| `get_accuracy(ref_gl, imp_gl, masked_gl = NULL)` | Share of masked calls reproduced, per locus, with the number scored in the attribute `n_scored`. Pass the output of `set_fraction_na()` as `masked_gl`. Without it every called cell is scored and the function warns. |
 
 Method-specific arguments go through `...` by name. Random forest takes `nflank`, `ntree`, `seed` and `nthreads`. Beagle takes `jre_path`, `beagle_path`, `memory`, `burnin`, `iterations`, `seed` and `nthreads`. Unknown names are an error.
 
@@ -75,20 +75,20 @@ Method-specific arguments go through `...` by name. Random forest takes `nflank`
 | Function | What it does |
 |---|---|
 | `ibs_matrix_purrr(gl, ploidy)` | Pairwise identity by state and the number of loci shared, for purity and identity checks. Slow on many individuals. |
-| `merge_duplicate_inds(gl, sample_dictionary)` | Collapses replicate samples of one designation by majority call. ⚠ (P1) |
-| `get_mendelian_error_counts(gl, trios)` | Counts Mendelian inconsistencies per trio. Diploid only. ⚠ (P2, a lower bound) |
+| `merge_duplicate_inds(gl, sample_dictionary)` | Collapses replicate samples of one designation by majority call, with ties set to missing. Individuals take the name of their designation. Positions, alleles and metrics are kept. |
+| `get_mendelian_error_counts(gl, trios)` | Counts Mendelian inconsistencies per trio with the conservative rule for later generations. Diploid only. ⚠ (P2, a lower bound for F1 trios) |
 
 ## Write
 
 | Function | What it does |
 |---|---|
-| `write_vcf(gl, output_path, na_rep = "./.")` | Writes a genlight object to VCF 4.0, gzipped when the path ends in `.gz`. Genotypes are unphased. |
+| `write_vcf(gl, output_path, na_rep = NULL)` | Writes a genlight object to VCF 4.0, gzipped when the path ends in `.gz`. Genotypes are unphased. Missing genotypes follow the ploidy, `./.` or `./././.`. |
 
 ## BioFlow interface
 
 | Function | What it does |
 |---|---|
-| `apply_bioflow_modifications(gl, modifications)` | Replays the removals that BioFlow recorded in its modifications table. ⚠ (B2) |
+| `apply_bioflow_modifications(gl, modifications)` | Replays the removals that BioFlow recorded in its modifications table. Warns when the table holds imputation rows, which are not applied. ⚠ (B2) |
 
 ## Set-up and dependencies
 
@@ -116,4 +116,4 @@ These turn genotype strings into dosages, and the readers call them. Only `get_a
 
 ## Internal functions
 
-Not exported, listed so that contributors can find them. `process_metadata()` flags markers in every reader. `read_tabular_geno()` reads hapmap and other tables with common missing codes. `recalc_metrics()` relies on `get_inbreeding()`. Imputation uses `freq_impute()`, `rf_impute()`, `i_rf_impute()` and `apply_imputation()`. `parse_counts_metadata()` and `compare_tags()` serve the DArTag reader. `majority_call()` and `collapse_inds()` serve the merge. `require_optional()` checks optional packages. `read_genolcsv()` and the three plot functions in `R/QC_plots_adegenet.R` are unfinished or legacy and cannot be used as they stand.
+Not exported, listed so that contributors can find them. `process_metadata()` flags markers in every reader. `read_tabular_geno()` reads hapmap and other tables with common missing codes. `recalc_metrics()` relies on `get_inbreeding()`. Imputation uses `freq_impute()`, `rf_impute()`, `i_rf_impute()` and `apply_imputation()`. `parse_counts_metadata()` and `compare_tags()` serve the DArTag reader. `majority_call()` and `collapse_inds()` serve the merge. `require_optional()` checks optional packages.

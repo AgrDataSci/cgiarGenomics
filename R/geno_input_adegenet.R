@@ -171,7 +171,12 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
   vcf <- vcfR::read.vcfR(path)
   
   # Get the metadata from the VCF file
-  meta_vcf <- as.data.frame(vcfR::getFIX(vcf))
+  fix <- vcfR::getFIX(vcf)
+  # with one variant getFIX() returns a vector, so restore the table shape
+  if (is.null(dim(fix))) {
+    fix <- matrix(fix, nrow = 1, dimnames = list(NULL, names(fix)))
+  }
+  meta_vcf <- as.data.frame(fix)
   
   meta <- meta_vcf %>% 
     dplyr::rename(id = ID,

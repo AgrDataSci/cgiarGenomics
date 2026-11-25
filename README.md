@@ -46,7 +46,7 @@ install_optional_deps()
 | randomForest | `impute_gl(method = "random_forest")` |
 | dartR.base | `read_DArTSeq_SNP()`, which also needs SNPRelate and snpStats from Bioconductor |
 
-Beagle imputation also needs Java 8 or later. The Beagle 5 JAR ships with the package. Run `check_beagle_requirements()` to confirm everything is in place.
+Beagle imputation also needs Java 8 or later. The Beagle 5.5 JAR ships with the package. Run `check_beagle_requirements()` to confirm everything is in place.
 
 ## Quick start
 
@@ -82,13 +82,13 @@ Example files for every format are in [`tests/`](tests), including diploid, tetr
 | DArTSeq SNP report | `read_DArTSeq_SNP()` | diploid |
 | DArTag dosage report with allele counts | `read_DArTag_count_dosage()` | diploid and polyploid |
 
-**Hapmap.** The first eleven columns follow the hapmap standard, and samples start at column 12. The `alleles` column separates reference and alternative with `/`, as in `A/G`. Calls are written in full, `AG` for a diploid and `AAGG` for a tetraploid.
+**Hapmap.** The first eleven columns follow the hapmap standard, and samples start at column 12. The `alleles` column separates reference and alternative with `/`, as in `A/G`. Calls are written in full, `AG` for a diploid and `AAGG` for a tetraploid. Diploid files with one IUPAC code per call, as TASSEL writes them, are read as well.
 
 | rs# | alleles | chrom | pos | strand | assembly# | center | protLSID | assayLSID | panelLSID | QCcode | sample_1 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 44509 | A/G | Chr02 | 5565755 | NA | NA | NA | NA | NA | NA | NA | AAGG |
 
-**VCF.** Any VCF with a `GT` field. Use `sep = "\\|"` for phased files.
+**VCF.** Any VCF with a `GT` field. Phased and unphased calls are both read, also when one file mixes them.
 
 | #CHROM | POS | ID | REF | ALT | QUAL | FILTER | INFO | FORMAT | sample_1 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -145,11 +145,17 @@ The metrics sit in the `other` slot of the object, as `loc.metrics` (MAF, missin
 
 ## Status
 
-Version 1.0.2 is in use behind Bioflow. A code audit in November 2026 found defects that change results off that path. [`dev/audit.md`](dev/audit.md) lists each finding with its location and proposed fix, and the documentation of every affected function names the issue. The development version fixes the four critical ones, namely MAF values divided by ploidy twice, wrong dosages from Random Forest imputation, DArTSeq reading that dropped every locus, and Bioflow modifications that dropped a whole margin. [`NEWS.md`](NEWS.md) records which results change. Read the audit before you rely on filters that nothing passes, imputation accuracy or replicate merging.
+Version 1.0.3 is the development version on this branch. It follows two reviews of version 1.0.2 in November 2026, a code audit and an external review that ran the package. Both found defects that changed results without an error, among them minor allele frequencies divided by ploidy twice, Random Forest imputation that wrote impossible dosages, and filters that were skipped when nothing passed them.
+
+Version 1.0.3 fixes those defects. Each fix has a unit test, and the tests and `R CMD check` run on every pull request. [`NEWS.md`](NEWS.md) lists every result that changes, and [`dev/audit.md`](dev/audit.md) records each finding with its status.
+
+Results from version 1.0.2 that used a MAF filter, marker thinning, Fis, heterozygosity, Random Forest imputation or replicate merging differ from results of version 1.0.3. Rerun those analyses before relying on them.
+
+A few findings stay open. `loc_Fis` assumes a diploid, `apply_bioflow_modifications()` replays removals only, and the argument for ploidy is spelled `ploidity` in some functions and `ploidy` in others.
 
 ## Contributing
 
-Report bugs and ideas in the [issue tracker](https://github.com/Breeding-Analytics/cgiarGenomics/issues). Work on a branch and open a pull request. Every fix needs a test that fails before it and passes after it. [`AGENTS.md`](AGENTS.md) sets the rules for changing the package, for people and AI assistants alike.
+Report bugs and ideas in the [issue tracker](https://github.com/Breeding-Analytics/cgiarGenomics/issues). Work on a branch and open a pull request. Every fix needs a test that fails before it and passes after it, and the `tests` workflow has to pass. [`AGENTS.md`](AGENTS.md) sets the rules for changing the package, for people and AI assistants alike.
 
 ## Cite
 
@@ -157,6 +163,8 @@ Cite the package in R with `citation("cgiarGenomics")`. When you use it through 
 
 ## License
 
-The package is released under the [MIT License](LICENSE.md), copyright CGIAR Breeding Analytics Team. The bundled Beagle JAR is distributed by its authors under the Apache License 2.0.
+The package is released under the [MIT License](LICENSE.md), copyright CGIAR Breeding Analytics Team.
+
+The bundled Beagle JAR is a separate program under the GNU General Public License, version 3 or later. [`inst/extdata/README.md`](inst/extdata/README.md) gives its source, version and checksum.
 
 Contact the Breeding Analytics team at breedinganalytics@cgiar.org.
