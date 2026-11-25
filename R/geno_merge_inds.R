@@ -40,58 +40,70 @@ collapse_inds <- function(mt) {
 #'   `indNames(gl)`) and `designation_id` (the genotype each sample belongs to).
 #'   Every individual in `gl` must appear in it.
 #'
-#' @return A genlight object with one individual per designation.
+#' @return A genlight object with one individual per designation, named by
+#'   `designation_id`. Designations with one sample come first, in the order
+#'   of `gl`, followed by the merged designations in alphabetical order.
+#'   Chromosomes, positions and alleles are kept and metrics are recalculated.
 #'
-#' @section Known issue:
-#' Single samples are matched on `sample_id` instead of `designation_id`, the
-#' function fails when no designation has replicates, and the result loses
-#' chromosomes, positions, alleles and metrics. Run [recalc_metrics()] on the
-#' result before filtering it. See `dev/audit.md`, finding P1.
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' mt = matrix(c(0, 0, 2,
+#'               0, 2, 2,
+#'               1, 1, 0),
+#'             nrow = 3, byrow = TRUE,
+#'             dimnames = list(c("s1", "s2", "s3"), paste0("snp", 1:3)))
+#' gl = new("genlight", mt, ploidy = 2)
 #' dict = data.frame(sample_id = c("s1", "s2", "s3"),
 #'                   designation_id = c("G1", "G1", "G2"))
 #' merged = merge_duplicate_inds(gl, dict)
-#' }
+#' as.matrix(merged)
 merge_duplicate_inds <- function(gl, sample_dictionary) {
-  if(sum(sample_dictionary$sample_id %in% indNames(gl))!=nInd(gl)) {
+  ind_names <- adegenet::indNames(gl)
+  
+  if(!all(c("sample_id", "designation_id") %in% colnames(sample_dictionary))) {
+    cli::cli_abort("`sample_dictionary` needs the columns sample_id and designation_id")
+  }
+  if(sum(sample_dictionary$sample_id %in% ind_names) != adegenet::nInd(gl)) {
     cli::cli_abort("sample_dictionary doesn't consider all uploaded because not all priveded sample_id match")
   }
   
-  single_samples <- sample_dictionary %>% 
-    dplyr::group_by(designation_id) %>% 
-    dplyr::filter(dplyr::n() == 1) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::pull(designation_id)
-
-
-  dup_samples <- sample_dictionary[which(!sample_dictionary$sample_id %in% single_samples),]
-
-  dup_mt <- dup_samples %>% 
-    split(.$designation_id) %>% 
-    purrr::map(~{
-      # rows of gl that belong to this designation (not positions inside .x)
-      ind_idx <- which(indNames(gl) %in% .x$sample_id)
-      smt <- as.matrix(gl[ind_idx,])
-      collapse_inds(smt)
-    }) %>% 
-    do.call(rbind, .)
-  # split() orders groups by factor levels, so name rows the same way
-  rownames(dup_mt) <- levels(factor(dup_samples$designation_id))
-  
-  
-  if(length(single_samples) > 0) {
-    ss_idx <- which(indNames(gl) %in% single_samples)
-    s_mt <- as.matrix(gl[ss_idx,])
-    out_mt <- rbind(s_mt, dup_mt)
-  } else {
-    out_mt <- dup_mt
+  # designation of each individual, in the order of the genlight object
+  designation <- as.character(sample_dictionary$designation_id[match(ind_names, sample_dictionary$sample_id)])
+  if(anyNA(designation)) {
+    cli::cli_abort("Every individual in `gl` needs a designation_id in `sample_dictionary`")
   }
-  colnames(out_mt) <- locNames(gl)
+  
+  mt <- as.matrix(gl)
+  n_per_designation <- table(designation)
+  single_designations <- unique(designation[designation %in% names(n_per_designation)[n_per_designation == 1]])
+  dup_designations <- sort(names(n_per_designation)[n_per_designation > 1])
+  
+  # Single samples keep their calls and take the name of their designation
+  s_mt <- mt[match(single_designations, designation), , drop = FALSE]
+  rownames(s_mt) <- single_designations
+  
+  # Replicates are collapsed to the majority call at each locus
+  dup_mt <- matrix(numeric(0), nrow = 0, ncol = ncol(mt))
+  if(length(dup_designations) > 0) {
+    dup_mt <- do.call(rbind, lapply(dup_designations, function(d) {
+      collapse_inds(mt[which(designation == d), , drop = FALSE])
+    }))
+    rownames(dup_mt) <- dup_designations
+  }
+  
+  out_mt <- rbind(s_mt, dup_mt)
+  colnames(out_mt) <- adegenet::locNames(gl)
+  
   # keep the source ploidy (otherwise genlight infers it per individual from max dosage)
-  merged_gl <- new("genlight", out_mt, ploidy = max(adegenet::ploidy(gl)))
+  merged_gl <- new("genlight", out_mt,
+                   ploidy = max(adegenet::ploidy(gl)),
+                   chromosome = gl@chromosome,
+                   position = gl@position)
+  if (!is.null(adegenet::alleles(gl))) {
+    adegenet::alleles(merged_gl) <- adegenet::alleles(gl)
+  }
+  merged_gl <- recalc_metrics(merged_gl)
   return(merged_gl)  
 }
 

@@ -16,12 +16,17 @@ read_DArTSeq_SNP(path, snp_id, chr_name, pos_name)
 \item{pos_name}{Column name of the physical position where the SNP is located in the CSV file.}
 }
 \value{
-A genlight object with mapped SNPs.
+A genlight object with mapped SNPs and metrics from \code{\link[=recalc_metrics]{recalc_metrics()}}.
 }
 \description{
-This function reads a DArTSeq SNP dataset from a CSV file and converts it into a genlight object using
-the DartR library reading functions.
+Reads a standard DArTSeq SNP report (CSV) with
+\code{dartR.base::gl.read.dart()} and moves chromosome and position from the
+locus metadata into the genlight slots. Unmapped SNPs are removed. Diploid
+only. Requires the suggested package dartR.base.
 }
 \examples{
-read_DArTSeq_SNP("path/to/dartseq/file.csv", snp_id = "SnpID", chr_name = "Chr", pos_name = "Position")
+\dontrun{
+read_DArTSeq_SNP("tests/DartSeq_fmt/DartSeq/DArTSeq_CB_snp.csv",
+                 snp_id = "AlleleID", chr_name = "Chrom", pos_name = "ChromPos")
+}
 }

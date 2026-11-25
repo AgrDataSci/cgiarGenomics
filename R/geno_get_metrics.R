@@ -186,9 +186,6 @@ get_overall_missingness <- function(gl) {
 #'
 #' @return A list with `het_ind` (one value per individual) and `het_loc`
 #'   (one value per locus).
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @seealso [get_ind_heterozygosity()], [get_loc_heterozygosity()]
 #' @export
 #'
@@ -204,8 +201,10 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
   # Boolean matrix of genotype calls where 0 > dosage < ploidy
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/adegenet::nInd(gl)
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/adegenet::nLoc(gl)
+  # share of heterozygotes among the calls that are not missing
+  called <- !is.na(mt)
+  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(called)
+  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(called)
   return(list(het_ind = het_ind, het_loc = het_loc))
 }
 
@@ -218,9 +217,6 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
 #' @param ploidy Integer. Ploidy level (default 2).
 #'
 #' @return A numeric vector with one value per locus.
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @export
 #'
 #' @examples
@@ -234,7 +230,8 @@ get_heterozygosity_metrics <- function(gl, ploidy = 2){
 get_loc_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/adegenet::nInd(gl)
+  # share of heterozygotes among the calls that are not missing
+  het_loc <- Matrix::colSums(het_ind_loc , na.rm = T)/Matrix::colSums(!is.na(mt))
   return(het_loc)
 }
 
@@ -247,9 +244,6 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
 #' @param ploidy Integer. Ploidy level (default 2).
 #'
 #' @return A numeric vector with one value per individual.
-#' @section Known issue:
-#' The denominator counts missing calls, so heterozygosity is underestimated
-#' when data are missing. See `dev/audit.md`, finding M2.
 #' @export
 #'
 #' @examples
@@ -263,7 +257,8 @@ get_loc_heterozygosity <- function(gl, ploidy = 2){
 get_ind_heterozygosity <- function(gl, ploidy = 2){
   mt <- as.matrix(gl)
   het_ind_loc <- mt > 0 & mt < ploidy
-  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/adegenet::nLoc(gl)
+  # share of heterozygotes among the calls that are not missing
+  het_ind <- Matrix::rowSums(het_ind_loc , na.rm = T)/Matrix::rowSums(!is.na(mt))
   return(het_ind)
 }
 
@@ -278,11 +273,11 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 #'
 #' @return A numeric vector with one value per locus, between 0 and 0.5.
 #'
-#' @section Known issue:
-#' [adegenet::glMean()] already returns allele frequencies, and this function
-#' divides them by `ploidy` again. In version 1.0.2 the stored MAF is half the
-#' true value in diploids, and a locus fixed for the alternative allele gets
-#' 0.5. Every MAF filter inherits the error. See `dev/audit.md`, finding M1.
+#' @details
+#' [adegenet::glMean()] returns the frequency of the alternative allele for any
+#' ploidy, so `ploidy` is not used in the calculation. The argument is kept so
+#' that existing calls keep working. Versions up to 1.0.2 divided the frequency
+#' by `ploidy` a second time and returned values that were too low.
 #' @export
 #'
 #' @examples
@@ -294,7 +289,8 @@ get_ind_heterozygosity <- function(gl, ploidy = 2){
 #' gl = new("genlight", mt, ploidy = 2)
 #' get_maf(gl)
 get_maf <- function(gl, ploidy = 2){
-  alf <- adegenet::glMean(gl)*(1/ploidy)
+  # glMean() already returns the alternative allele frequency
+  alf <- adegenet::glMean(gl)
   maf <- ifelse(alf > 0.5, 1 - alf, alf)
   return(maf)
 }
@@ -330,8 +326,7 @@ get_inbreeding <- function(gl){
 #'   `other$ind.metrics`.
 #'
 #' @section Known issue:
-#' `maf` and `loc_Fis` inherit the error described in [get_maf()], and
-#' `loc_Fis` assumes a diploid. See `dev/audit.md`, findings M1 and M3.
+#' `loc_Fis` assumes a diploid. See `dev/audit.md`, finding M3.
 #' @export
 #'
 #' @examples
@@ -388,7 +383,7 @@ get_overall_summary <- function(gl){
   ninds <- adegenet::nInd(gl)
   nlocs <- adegenet::nLoc(gl)
   overall_missiness <- mean(gl@other$ind.metrics$ind_miss)
-  overall_heterozygosity <- mean(gl@other$ind.metrics$ind_het)
+  overall_heterozygosity <- mean(gl@other$ind.metrics$ind_het, na.rm = T)
   overall_maf <- mean(gl@other$loc.metrics$maf, na.rm = T)
   
   out <- list(

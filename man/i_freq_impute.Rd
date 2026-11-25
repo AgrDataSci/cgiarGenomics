@@ -2,11 +2,24 @@
 % Please edit documentation in R/geno_imputation.R
 \name{i_freq_impute}
 \alias{i_freq_impute}
-\title{Imputation with allele frequency}
+\title{Draw one genotype call from an allele frequency}
 \usage{
 i_freq_impute(q_frq, ploidity = 2)
 }
-\description{
-Assuming a bi-allelic marker, using the observed allelic frequency for one allele
-is sampled the genotype call for any ploidity level
+\arguments{
+\item{q_frq}{Numeric between 0 and 1. Frequency of the alternative allele.}
+
+\item{ploidity}{Integer. Ploidy level (default 2).}
 }
+\value{
+Numeric. A dosage between 0 and \code{ploidity}.
+}
+\description{
+Draws each of the \code{ploidity} allele copies independently, with probability
+\code{q_frq} of being the alternative allele, and returns their sum.
+}
+\examples{
+set.seed(1)
+cgiarGenomics:::i_freq_impute(0.3, ploidity = 2)
+}
+\keyword{internal}

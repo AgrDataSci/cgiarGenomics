@@ -2,19 +2,38 @@
 % Please edit documentation in R/geno_imputation.R
 \name{get_accuracy}
 \alias{get_accuracy}
-\title{Compare the genotype calls (gt) of a reference genlight object
-against an imputed gl. Measure the accuracy of the imputation
-process comparing the reference gt with imputed gt}
+\title{Measure imputation accuracy on masked calls}
 \usage{
-get_accuracy(ref_gl, imp_gl)
+get_accuracy(ref_gl, imp_gl, masked_gl = NULL)
 }
 \arguments{
-\item{ref_gl}{Rreference genlight instance}
+\item{ref_gl}{Reference genlight instance, before masking.}
 
-\item{imp_gl}{Imputed genlight instance}
+\item{imp_gl}{Imputed genlight instance.}
+
+\item{masked_gl}{The masked genlight instance that was imputed, as returned
+by \code{\link[=set_fraction_na]{set_fraction_na()}}. When \code{NULL}, every called reference cell is
+scored, including cells that were never masked. That inflates accuracy,
+and the function warns.}
+}
+\value{
+A numeric vector with one value per locus, the share of scored
+cells that the imputed object reproduces. Loci with no scored cell are
+\code{NA}. The attribute \code{n_scored} holds the number of scored cells per locus.
 }
 \description{
-Compare the genotype calls (gt) of a reference genlight object
-against an imputed gl. Measure the accuracy of the imputation
-process comparing the reference gt with imputed gt
+Compares an imputed genlight object with the reference it was masked from.
+With \code{masked_gl}, only the cells that \code{\link[=set_fraction_na]{set_fraction_na()}} masked are scored,
+which is the accuracy of the imputation. A masked cell that stays missing
+counts as wrong. Objects are matched by individual and locus names, so loci
+removed by \code{\link[=impute_gl]{impute_gl()}} are left out.
+}
+\examples{
+mt = matrix(rep(c(0, 1, 2, 1), 6), nrow = 8,
+            dimnames = list(paste0("ind", 1:8), paste0("snp", 1:3)))
+gl = new("genlight", mt, ploidy = 2)
+set.seed(1)
+masked = set_fraction_na(gl, fraction = 0.25)
+imputed = impute_gl(masked, ploidity = 2, method = "frequency")
+get_accuracy(gl, imputed$gl, masked_gl = masked)
 }

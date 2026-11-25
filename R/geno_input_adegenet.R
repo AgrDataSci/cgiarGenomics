@@ -1,106 +1,4 @@
 
-#' Read a genotype CSV (unfinished, internal)
-#'
-#' Not usable in this version, as it references an undefined object. Kept for
-#' reference only. See `dev/audit.md`, finding R8.
-#' @noRd
-read_genolcsv <- function(path,
-                        snp_id,
-                        chr_name,
-                        pos_name,
-                        first_sample,
-                        ploidity = 2,
-                        sep = c("","/","|")) {
-  # Validate arguments
-  if (!file.exists(path)){
-    cli::cli_abort("`path` don't exist. Verify if is wrote properly {path}")
-  }
-  if (!rlang::is_integerish(ploidity)) {
-    cli::cli_abort("`ploidity` must be a round number not {ploidity}")
-  }
-  sep = match.arg(sep)
-  
-  
-  # Read the genotype data from the tabular file
-  table <- read_tabular_geno(path)
-  
-  if(!hasName(table, snp_id)){
-    cli::cli_abort("The input snp_id: {snp_id} column doesn't exist in the csv file")
-  }
-  
-  if(!hasName(table, chr_name)){
-    cli::cli_abort("The input chr_name: {chr_name} column doesn't exist in the csv file")
-  }
-  
-  if(!hasName(table, pos_name)){
-    cli::cli_abort("The input pos_name: {pos_name} column doesn't exist in the csv file")
-  }
-  
-  nrows <- dim(table)[1]
-  ncols <- dim(table)[2]
-  individuals <- colnames(table)[which(x == first_sample,colnames(table)):ncols]
-  loci <- table[,snp_id]
-  
-  # Print a data integrity message
-  int_message <- paste0(
-    "Input data should have loci as rows and individuals as columns \n",
-    nrows - 1, " Loci, confirming first 5: \n",
-    paste(loci[1:5], collapse = " "), "\n",
-    length(individuals), " Individuals, confirming first 5:\n",
-    paste(individuals[1:5], collapse = " ")
-  )
-  
-  cli::cli_inform(int_message)
-  
-  # Check if individual labels and loci IDs are unique
-  if (length(unique(individuals)) != length(individuals)) {
-    cli::cli_abort("Fatal Error: Individual labels are not unique, check and edit your input file\n")
-  }
-  
-  # Metadata processing, get the first allele as reference and the remaining
-  # as alternative
-  meta <- table[1:11] %>% 
-    dplyr::mutate(alt = purrr::map_chr(stringr::str_split(alleles, '/'), \(.x) paste(.x[-1], collapse = ",")),
-           ref = stringr::str_split(alleles, '/', simplify = TRUE)[,1],
-           ) %>% 
-    dplyr::mutate(alt = dplyr::na_if(alt, "")) %>% 
-    dplyr::select('rs#', chrom, pos, ref, alt) %>% 
-    dplyr::rename(id = 'rs#')
-  
-  meta <- process_metadata(meta)
-  
-  
-  # Read marker columns and transpose to obtain samples x snps
-  mt <- t(table[!meta$filter, c(12:dim(table)[2])])
-  allele_set <- paste(meta$ref[!meta$filter], meta$alt[!meta$filter], sep='/')
-  
-  gt <- mapply(function(col, arg, ploidity, sep) get_allelic_dosage(mt[,col], arg,ploidity, sep),
-               col = seq(1,dim(mt)[2]), 
-               arg = allele_set,
-               ploidity = ploidity,
-               sep = sep)
-  
-  max_dosage <- max(gt, na.rm = TRUE)
-  if(max_dosage < ploidity){
-    cli::cli_warn("Max dosage ({max_dosage}) lower than ploidy lvl ({ploidity})")
-  } 
-  if (max_dosage > ploidity){
-    cli::cli_abort("Max dosage ({max_dosage}) higher than ploidy lvl ({ploidity})")
-  }
-  
-  gl <- new("genlight",
-            gt,
-            ploidy = ploidity,
-            loc.names = meta$id[!meta$filter],
-            ind.names = individuals,
-            chromosome = meta$chrom[!meta$filter],
-            position = meta$pos[!meta$filter])
-  adegenet::alleles(gl) <- allele_set
-  gl <- recalc_metrics(gl)
-  return(gl)
-}
-
-
 #' read_hapmap
 #'
 #' Reads a tab-separated hapmap file (uncompressed) and converts it into a
@@ -114,12 +12,12 @@ read_genolcsv <- function(path,
 #' @param sep String, separator between alleles in a call, one of `""`
 #'   (default, as in `AG`), `"/"` or `"|"`.
 #'
+#' @details
+#' Diploid files that write each call as one IUPAC code (`A`, `R`, `Y`), as
+#' TASSEL does, are decoded to two-letter genotypes.
+#'
 #' @return A genlight object with metrics from [recalc_metrics()].
 #'
-#' @section Known issue:
-#' With `sep = "/"` or `"|"` the ploidy check counts the separator and aborts.
-#' Single-letter IUPAC calls (`R`, `Y`) become missing. See `dev/audit.md`,
-#' findings R4 and R6.
 #' @export
 #'
 #' @examples
@@ -160,9 +58,9 @@ read_hapmap <- function(path, ploidity = 2, sep = "") {
   # Print a data integrity message
   int_message <- paste0(
     "Input data should have loci as rows and individuals as columns \n",
-    nrows - 1, " Loci, confirming first 5: \n",
+    nrows, " Loci, confirming first 5: \n",
     paste(loci[1:5], collapse = " "), "\n",
-    ncols - length(hapmap_snp_attr), " Individuals, confirming first 5:\n",
+    length(individuals), " Individuals, confirming first 5:\n",
     paste(individuals[1:5], collapse = " ")
   )
   
@@ -187,10 +85,26 @@ read_hapmap <- function(path, ploidity = 2, sep = "") {
   
   
   # Read marker columns and transpose to obtain samples x snps
-  mt <- t(table[!meta$filter, c(12:dim(table)[2])])
+  mt <- t(table[!meta$filter, c(12:dim(table)[2]), drop = FALSE])
   
-  gc_len <- purrr::map_int(mt, function(x){max(nchar(x))})
-  max_dosage <- max(gc_len, na.rm = TRUE)
+  # Count the alleles in each call, without the separator
+  call_len <- nchar(if (sep == "") mt else gsub(sep, "", mt, fixed = TRUE))
+  max_dosage <- max(call_len, na.rm = TRUE)
+  
+  # Diploid hapmap files from TASSEL write each call as one IUPAC code
+  if (ploidity == 2 && max_dosage == 1) {
+    iupac <- c(A = "AA", C = "CC", G = "GG", T = "TT",
+               R = "AG", Y = "CT", S = "CG", W = "AT", K = "GT", M = "AC")
+    decoded <- unname(iupac[toupper(mt)])
+    not_decoded <- sum(!is.na(mt) & is.na(decoded))
+    cli::cli_inform("Calls are single IUPAC codes, read as diploid genotypes.")
+    if (not_decoded > 0) {
+      cli::cli_warn("{not_decoded} call{?s} with an unknown IUPAC code set to missing.")
+    }
+    mt[] <- decoded
+    sep <- ""
+    max_dosage <- 2
+  }
   
   if(max_dosage < ploidity){
     cli::cli_warn("Max dosage ({max_dosage}) lower than ploidy lvl ({ploidity})")
@@ -201,12 +115,12 @@ read_hapmap <- function(path, ploidity = 2, sep = "") {
   }
   allele_set <- paste(meta$ref[!meta$filter], meta$alt[!meta$filter], sep='/')
   
-  gt <- mapply(function(col, arg, ploidity, sep) get_allelic_dosage(mt[,col], arg,ploidity, sep),
-               col = seq(1,dim(mt)[2]), 
-               arg = allele_set,
-               ploidity = ploidity,
-               sep = sep)
-  
+  # One column per locus. vapply keeps the matrix shape with one sample or
+  # one locus.
+  gt <- vapply(seq_len(ncol(mt)), function(col) {
+    as.numeric(get_allelic_dosage(mt[, col], allele_set[col], ploidity, sep))
+  }, numeric(nrow(mt)))
+  gt <- matrix(gt, nrow = nrow(mt))
   
   gl <- new("genlight",
             gt,
@@ -231,14 +145,11 @@ read_hapmap <- function(path, ploidity = 2, sep = "") {
 #' @param ploidity Integer. Ploidity level of the organism. (Default = 2)
 #' @param na_reps Vector. Genotype strings to treat as missing
 #'   (default `c("-", "./.")`). vcfR already converts fully missing calls.
-#' @param sep String. Separator between alleles in the GT field. Use `"/"` for
-#'   unphased calls (default) and `"\\|"` for phased calls.
+#' @param sep Kept for compatibility and not used. Phased (`|`) and unphased
+#'   (`/`) calls are both read, also when one file mixes them.
 #'
 #' @return A genlight object with metrics from [recalc_metrics()].
 #'
-#' @section Known issue:
-#' A file that mixes phased and unphased calls cannot be read with a single
-#' `sep`. See `dev/audit.md`, finding R5.
 #' @export
 #'
 #' @examples
@@ -260,7 +171,12 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
   vcf <- vcfR::read.vcfR(path)
   
   # Get the metadata from the VCF file
-  meta_vcf <- as.data.frame(vcfR::getFIX(vcf))
+  fix <- vcfR::getFIX(vcf)
+  # with one variant getFIX() returns a vector, so restore the table shape
+  if (is.null(dim(fix))) {
+    fix <- matrix(fix, nrow = 1, dimnames = list(NULL, names(fix)))
+  }
+  meta_vcf <- as.data.frame(fix)
   
   meta <- meta_vcf %>% 
     dplyr::rename(id = ID,
@@ -271,15 +187,25 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
   dplyr::select(id, chrom, pos, ref, alt)
   
   meta <- process_metadata(meta)
-  mt <- t(vcfR::extract.gt(vcf, return.alleles = T)[!meta$filter,])
-  if (length(na_reps) > 0) {
-    idx <- which(mt %in% na_reps)
-    mt[idx] <- NA
-  }
+  mt <- t(vcfR::extract.gt(vcf, return.alleles = TRUE)[!meta$filter, , drop = FALSE])
+  
+  # A file can mix phased (|) and unphased (/) calls. Write all of them with
+  # one separator, so both are read whatever `sep` says.
+  mt_dim <- dim(mt)
+  mt_names <- dimnames(mt)
+  mt <- gsub("|", "/", mt, fixed = TRUE)
+  dim(mt) <- mt_dim
+  dimnames(mt) <- mt_names
+  sep <- "/"
+  
+  na_reps <- unique(c(na_reps, gsub("|", "/", na_reps, fixed = TRUE)))
+  mt[mt %in% na_reps] <- NA
+  # calls made of dots only are missing at any ploidy (./. or ./././.)
+  mt[grepl("^[./]+$", mt)] <- NA
+  
   # check ploidity
-  mt_gt_str <- matrix(gsub(sep, "", mt), nrow = dim(mt)[1], ncol = dim(mt)[2])
-  gc_len <- purrr::map_int(mt_gt_str, function(x){max(nchar(x))})
-  max_dosage <- max(gc_len, na.rm = TRUE)
+  call_len <- nchar(gsub("/", "", mt, fixed = TRUE))
+  max_dosage <- max(call_len, na.rm = TRUE)
   if(max_dosage < ploidity){
     cli::cli_warn("Max dosage ({max_dosage}) lower than ploidy lvl ({ploidity})")
   }
@@ -292,11 +218,10 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
   
   allele_set <- paste(meta$ref[!meta$filter], meta$alt[!meta$filter], sep="/")
 
-  gt <- mapply(function(col, arg, ploidity, sep) get_allelic_dosage(mt[,col], arg,ploidity, sep),
-               col = seq(1,dim(mt)[2]), 
-               arg = allele_set,
-               ploidity = ploidity,
-               sep = sep)
+  gt <- vapply(seq_len(ncol(mt)), function(col) {
+    as.numeric(get_allelic_dosage(mt[, col], allele_set[col], ploidity, sep))
+  }, numeric(nrow(mt)))
+  gt <- matrix(gt, nrow = nrow(mt))
   
   gl <- new("genlight",
             gt,
@@ -325,10 +250,6 @@ read_vcf <- function(path, ploidity = 2, na_reps = c("-", "./."), sep="/") {
 #'
 #' @return A genlight object with mapped SNPs and metrics from [recalc_metrics()].
 #'
-#' @section Known issue:
-#' When every SNP is mapped, every locus is removed. When some are unmapped,
-#' positions may be taken from the wrong rows. See `dev/audit.md`, findings R2
-#' and R3.
 #' @export
 #'
 #' @examples
@@ -374,12 +295,17 @@ read_DArTSeq_SNP <- function(path, snp_id, chr_name, pos_name) {
                     SNPs withoud position data, removed.")
   }
   
-  # Remove SNPs without position data
-  gl <- gl[, -c(no_loc)]
+  # Remove SNPs without position data. Skip when every SNP is mapped, since
+  # indexing with an empty negative vector would drop every locus.
+  if(length(no_loc) > 0){
+    gl <- gl[, -c(no_loc)]
+    pos <- pos[-c(no_loc)]
+    chrom <- chrom[-c(no_loc)]
+  }
   
-  # Assign the position and chromosome information to the genlight object
-  adegenet::position(gl) <- gl@other$loc.metrics[, pos_name]
-  adegenet::chromosome(gl) <- gl@other$loc.metrics[, chr_name]
+  # Assign the position and chromosome of the loci that were kept
+  adegenet::position(gl) <- pos
+  adegenet::chromosome(gl) <- chrom
   
   gl <- recalc_metrics(gl)
   return(gl)
@@ -398,14 +324,14 @@ read_DArTSeq_SNP <- function(path, snp_id, chr_name, pos_name) {
 #'
 #' @return Dataframe. The genotype block, with the sample names as column
 #'   names. Values are kept as read.
-#' @export
+#' @keywords internal
 extract_dart_gt <- function(data,
                             sample.name.row= 2,
                             first.data.row = 9,
                             first.data.col=6){
   
   if (!is.data.frame(data)) {
-    cli::cli_abort("`sample.name.row` must be a round number not {sample.name.row}")
+    cli::cli_abort("`data` must be a data frame.")
   }
   if (!rlang::is_integerish(sample.name.row)) {
     cli::cli_abort("`sample.name.row` must be a round number not {sample.name.row}")
@@ -447,7 +373,7 @@ extract_dart_gt <- function(data,
 #' @return A list with `gt` (a data frame of integer dosages, samples in
 #'   columns, plus a `marker_id` column) and `dosage_meta` (the metadata
 #'   columns).
-#' @export
+#' @keywords internal
 read_one_row_dart_gt_data <- function(path,
                                       sample.name.row= 2,
                                       first.data.row = 9,
@@ -474,6 +400,14 @@ read_one_row_dart_gt_data <- function(path,
   
   marker_ids <- as.vector(unlist(meta_data[snp_id_col]))
   l_dupes <- unique(marker_ids[which(duplicated(marker_ids))])
+  
+  if(length(l_dupes) > 0){
+    cli::cli_warn("{length(l_dupes)} marker ID{?s} appear{?s/} more than once in the dosage report. The first row of each is kept.")
+    keep <- !duplicated(marker_ids)
+    data <- data[keep, , drop = FALSE]
+    meta_data <- meta_data[keep, , drop = FALSE]
+    marker_ids <- marker_ids[keep]
+  }
   
   geno <- apply(data,2,as.integer)
   

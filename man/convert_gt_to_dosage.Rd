@@ -7,24 +7,22 @@
 convert_gt_to_dosage(locus, alt_allele, ploidity = 2, sep = "")
 }
 \arguments{
-\item{locus}{List. A list of genotype calls, e.g., c("AG", "GG", "AA").}
+\item{locus}{Character vector of genotype calls, e.g., \code{c("AG", "GG", "AA")}.}
 
-\item{alt_allele}{String. The alternative allele, e.g., "A", "G".}
+\item{alt_allele}{String. The alternative allele, e.g., \code{"A"}.}
 
-\item{ploidity}{Integer. The ploidity level of the organism, default is 2 (diploid).}
+\item{ploidity}{Integer. The ploidity level of the organism, default is 2.}
+
+\item{sep}{String. Separator between alleles within a call (default \code{""}).}
 }
 \value{
-A list of integers, representing the allelic dosages of the alternative allele
-        for each genotype call in the input list.
+A named vector with the dosage of \code{alt_allele} in each call.
 }
 \description{
-This function takes a list of genotype calls, an alternative allele, and the ploidity level
-of the organism as input, and returns a list of allelic dosages corresponding to each
-genotype call in the input list.
+Given a list of genotype calls, get the dosage of each one
 }
 \examples{
-convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # Returns list(1, 0, 2)
-convert_gt_to_dosage(c("AG", "GG", "AA"), "G")  # Returns list(1, 2, 0)
-convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # Returns list(3, 0) (triploid)
-convert_gt_to_dosage(c(NA, "AG"), "A")  # Returns list(NA, 1)
+cgiarGenomics:::convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # 1, 0, 2
+cgiarGenomics:::convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # 3, 0
 }
+\keyword{internal}

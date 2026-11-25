@@ -4,23 +4,33 @@
 \alias{read_hapmap}
 \title{read_hapmap}
 \usage{
-read_hapmap(path, ploidity = 2, sep = c("", "/", "|"))
+read_hapmap(path, ploidity = 2, sep = "")
 }
 \arguments{
 \item{path}{Path to the hapmap file (uncompressed).}
 
 \item{ploidity}{Integer, ploidity level of the organism (default: 2).}
 
-\item{sep}{String, separator that divides the alleles (default: "").}
+\item{sep}{String, separator between alleles in a call, one of \code{""}
+(default, as in \code{AG}), \code{"/"} or \code{"|"}.}
 }
 \value{
-A genlight object.
+A genlight object with metrics from \code{\link[=recalc_metrics]{recalc_metrics()}}.
 }
 \description{
-This function reads a hapmap file (uncompressed) and converts it into a genlight object.
+Reads a tab-separated hapmap file (uncompressed) and converts it into a
+genlight object of alternative allele dosages. The first allele in the
+\code{alleles} column is taken as reference and the second as alternative.
+Markers that are not bi-allelic SNPs, or share a position with another
+marker, are removed. Samples start at column 12.
+}
+\details{
+Diploid files that write each call as one IUPAC code (\code{A}, \code{R}, \code{Y}), as
+TASSEL does, are decoded to two-letter genotypes.
 }
 \examples{
-read_hapmap("path/to/hapmap/file.txt")
-read_hapmap("path/to/hapmap/file.txt", ploidity = 4)
-read_hapmap("path/to/hapmap/file.txt", sep = "|")
+\dontrun{
+gl = read_hapmap("tests/hmp_fmt/diploid_hmp.txt", ploidity = 2)
+gl4 = read_hapmap("tests/hmp_fmt/tetraploid_hmp.txt", ploidity = 4)
+}
 }

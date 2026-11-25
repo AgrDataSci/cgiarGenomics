@@ -11,15 +11,11 @@
 #' @param loc_miss Numeric. Keep loci with missingness `<=` this value.
 #' @param maf Numeric. Keep loci with MAF `>` this value.
 #' @param size Integer. Number of loci to return.
-#' @param seed Integer or `NULL`. Seed for the random draw. Required, pass
-#'   `NULL` for no seed.
+#' @param seed Integer or `NULL` (default). Seed for the random draw.
 #'
 #' @return A genlight object with at most `size` loci. Metrics in `other` are
 #'   not recalculated, so run [recalc_metrics()] before filtering it again.
 #'
-#' @section Known issue:
-#' Fails when two chromosomes tie for the most loci, and the MAF filter uses
-#' the values described in [get_maf()]. See `dev/audit.md`, findings F3 and M1.
 #' @export
 #'
 #' @examples
@@ -27,7 +23,7 @@
 #' gl_small = random_select_loci(gl, ind_miss = 0.2, loc_miss = 0.2,
 #'                               maf = 0.05, size = 1000, seed = 1)
 #' }
-random_select_loci <- function(gl, ind_miss, loc_miss, maf, size, seed){
+random_select_loci <- function(gl, ind_miss, loc_miss, maf, size, seed = NULL){
   
   if (!is.null(seed)) set.seed(seed)
   
@@ -64,7 +60,8 @@ random_select_loci <- function(gl, ind_miss, loc_miss, maf, size, seed){
     dplyr::group_by(CHROM) %>%
     dplyr::group_modify(function(sdf, i_chr) {
       k <- group_sizes %>% dplyr::filter(CHROM == i_chr$CHROM) %>%  dplyr::pull(q)
-      if(i_chr$CHROM == max_total){
+      # with a tie, the first of the largest chromosomes takes the remainder
+      if(i_chr$CHROM == max_total[1]){
         k = k + remaining
       }
       dplyr::slice_sample(sdf, n = k, replace = FALSE)
@@ -111,16 +108,16 @@ filter_gl <- function(gl, parameter, threshold, comparison_operator){
   comparison_func <- match.fun(comparison_operator)
   # Verify if threshold is a float value
   if(threshold > 1 ){
-    cli::cli_abort("`threshold`: {threshold} is greather of equal to 1, correct it")
+    cli::cli_abort("`threshold`: {threshold} is greater than 1. Metrics are rates between 0 and 1.")
   }
   
   if(filter_margin == 'loc'){
     index <- which(comparison_func(gl@other$loc.metrics[parameter], threshold))
-    filter_out <- gl@loc.names[-c(index)]
+    filter_out <- gl@loc.names[setdiff(seq_along(gl@loc.names), index)]
     
   } else {
     index <- which(comparison_func(gl@other$ind.metrics[parameter], threshold))
-    filter_out <- gl@ind.names[-c(index)]
+    filter_out <- gl@ind.names[setdiff(seq_along(gl@ind.names), index)]
     
   }
   
@@ -163,6 +160,9 @@ get_parameter_margin <- function(gl, param_name){
 #' Runs filters in the given order, recalculating metrics after each one, so
 #' every step sees the object left by the previous step. Two steps are always
 #' added at the end to remove loci and individuals with only missing data.
+#' When no locus or no individual passes a step, the function stops with an
+#' error of class `cgiarGenomics_empty_filter`, because the step would remove
+#' everything.
 #'
 #' @param gl A genlight object with metrics from [recalc_metrics()].
 #' @param filt_sequence A list of filter steps. Each step is a list with
@@ -171,10 +171,6 @@ get_parameter_margin <- function(gl, param_name){
 #' @return A list with `gl` (the filtered genlight object) and `filt_log` (one
 #'   [filter_gl()] result per step, named `<param>_<step>`).
 #'
-#' @section Known issue:
-#' When no element passes a step, the step is skipped and nothing is removed.
-#' Check `filt_log` for steps with an empty `index`. See `dev/audit.md`,
-#' finding F1.
 #' @seealso [filter_gl()], [get_parameter_margin()]
 #' @export
 #'
@@ -234,12 +230,20 @@ apply_sequence_filtering <- function(gl, filt_sequence){
     
     i_margin <- get_parameter_margin(gl, param)
     
-    if(length(i_filt_out$index) > 0){
-      if(i_margin == "loc"){
-        working_gl <- working_gl[,i_filt_out$index]
-      } else {
-        working_gl <- working_gl[i_filt_out$index,]
-      }
+    # A step that nothing passes would empty the object. Stop and say so,
+    # instead of skipping the step and returning unfiltered data.
+    if(length(i_filt_out$index) == 0){
+      what <- if(i_margin == "loc") "locus" else "individual"
+      cli::cli_abort(
+        c("No {what} passes filter step {i_step} ({param} {operator} {threshold}).",
+          "i" = "The step would remove everything, so filtering stopped. Relax the threshold or drop the step."),
+        class = "cgiarGenomics_empty_filter"
+      )
+    }
+    if(i_margin == "loc"){
+      working_gl <- working_gl[,i_filt_out$index]
+    } else {
+      working_gl <- working_gl[i_filt_out$index,]
     }
     working_gl <- recalc_metrics(working_gl)
     filtering_log[[glue::glue("{param}_{i_step}")]] <- i_filt_out

@@ -12,18 +12,20 @@ extract_dart_gt(
 )
 }
 \arguments{
-\item{data}{Dataframe. Dataframe with Allelic dosage data}
+\item{data}{Dataframe. DArT report read with \code{header = FALSE}.}
 
 \item{sample.name.row}{Integer. Row number which the sample names are (default = 2)}
 
-\item{first.data.row}{Integer. Row number of the first genotype call}
+\item{first.data.row}{Integer. Row number of the first genotype call (default = 9)}
 
-\item{first.data.col}{Integer. Col number of the first genotype call}
+\item{first.data.col}{Integer. Col number of the first genotype call (default = 6)}
 }
 \value{
-Dataframe. Returns a Dataframe with the allelic dosage data converted
-to integers and the column names as the samples.
+Dataframe. The genotype block, with the sample names as column
+names. Values are kept as read.
 }
 \description{
-extract_dart_gt
+Extracts the genotype block from a DArT report read without a header, and
+names its columns by sample.
 }
+\keyword{internal}

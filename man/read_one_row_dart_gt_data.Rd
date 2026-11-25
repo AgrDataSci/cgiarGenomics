@@ -12,7 +12,25 @@ read_one_row_dart_gt_data(
   snp_id_col
 )
 }
-\description{
-This function takes as input a path a DArT file where each variant is coded
-in a single line. It splits the metadata and the allelic dosages.
+\arguments{
+\item{path}{Path to the DArT CSV file.}
+
+\item{sample.name.row}{Integer. Row holding the sample names (default 2).}
+
+\item{first.data.row}{Integer. First row with genotype data (default 9).
+The row above it must hold the metadata column names.}
+
+\item{first.data.col}{Integer. First column with genotype data (default 6).}
+
+\item{snp_id_col}{Character. Name of the metadata column with marker IDs.}
 }
+\value{
+A list with \code{gt} (a data frame of integer dosages, samples in
+columns, plus a \code{marker_id} column) and \code{dosage_meta} (the metadata
+columns).
+}
+\description{
+Reads a DArT report where each variant takes a single row, such as a DArTag
+dosage report, and splits it into genotype calls and marker metadata.
+}
+\keyword{internal}

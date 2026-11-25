@@ -7,41 +7,28 @@
 get_allelic_dosage(l, alleles, ploidity, sep = "")
 }
 \arguments{
-\item{l}{A list of genotype calls, e.g., c("AG", "GG", "AA").}
+\item{l}{A vector of genotype calls, e.g., \code{c("AG", "GG", "AA")}.}
 
-\item{alleles}{ref and alternative allele, e.g., c("A", "C").}
+\item{alleles}{String. Reference and alternative allele separated by \code{/},
+e.g., \code{"A/G"}.}
 
 \item{ploidity}{Integer. The ploidity level of the organism.}
+
+\item{sep}{String. Separator between alleles within a call (default \code{""}).}
 }
 \value{
-A list of integers, representing the allelic dosages for the input
-        genotype calls.
+A named integer vector with the dosage of the alternative allele
+for each call.
 }
 \description{
-This function takes a list of genotype calls, a named vector of allele counts,
-and the ploidity level as input, and returns a list of allelic dosages for the
-genotype calls. The allelic dosage is the count of the alternative allele in
-the genotype call.
-}
-\details{
-The function first generates all possible genotype calls for the given alleles
-and ploidity level using the `get_all_gt_calls` function. It then calculates
-the allelic dosages for these possible genotype calls using the `convert_gt_to_dosage`
-function, treating the second allele as the alternative allele.
-
-Finally, the function replaces the genotype calls in the input list with their
-corresponding allelic dosages using the `replace_strings_with_integers` function.
-
-If a genotype call in the input list is not found in the set of possible genotype
-calls, its allelic dosage will be set to NA.
+Generates every possible call for the two alleles with \code{\link[=get_all_gt_calls]{get_all_gt_calls()}},
+converts each to the dosage of the alternative (second) allele with
+\code{\link[=convert_gt_to_dosage]{convert_gt_to_dosage()}}, and looks up the observed calls with
+\code{\link[=replace_strings_with_integers]{replace_strings_with_integers()}}. Calls that are not possible for these
+alleles, including \code{NA}, become \code{NA}.
 }
 \examples{
-genotypes <- c("AG", "GG", "AA")
-allele_counts <- c(A = 10, G = 20)
-get_allelic_dosage(genotypes, allele_counts, 2)  # Returns list(1, 2, 0)
-
-# Example with missing genotype call
-genotypes <- c("AG", "XX", "AA")
-allele_counts <- c(A = 10, G = 20)
-get_allelic_dosage(genotypes, allele_counts, 2)  # Returns list(1, NA, 0)
+get_allelic_dosage(c("AG", "GG", "AA"), "A/G", 2)  # dosages 1, 2, 0
+get_allelic_dosage(c("AG", "XX", "AA"), "A/G", 2)  # dosages 1, NA, 0
+get_allelic_dosage(c("A/G", "G/G"), "A/G", 2, sep = "/")  # dosages 1, 2
 }

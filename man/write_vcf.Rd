@@ -4,14 +4,16 @@
 \alias{write_vcf}
 \title{Write genlight object to VCF file}
 \usage{
-write_vcf(gl, output_path, na_rep = "./.")
+write_vcf(gl, output_path, na_rep = NULL)
 }
 \arguments{
 \item{gl}{A genlight object.}
 
-\item{output_path}{String. Path to the output VCF file. It could end in `.gz` for compression.}
+\item{output_path}{String. Path to the output VCF file. It could end in \code{.gz} for compression.}
 
-\item{na_rep}{String. NA representation for genotypes in the VCF file. Default is "./.".}
+\item{na_rep}{String or \code{NULL}. Text written for a missing genotype. With
+\code{NULL} (default) the text follows the ploidy of each individual, \code{./.} for
+a diploid and \code{./././.} for a tetraploid.}
 }
 \description{
 This function converts a genlight object to a VCF file and writes it to an output path.

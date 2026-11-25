@@ -17,3 +17,4 @@ Returns a dataframe
 \description{
 Read a text table and use common na representations for convert to NA
 }
+\keyword{internal}

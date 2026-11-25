@@ -8,3 +8,6 @@
 ^REFERENCE\.md$
 ^llms\.txt$
 ^dev$
+^LICENSE\.md$
+^\.github$
+^test_scripts$

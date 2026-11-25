@@ -2,13 +2,42 @@
 % Please edit documentation in R/geno_filtering_adegenet.R
 \name{filter_gl}
 \alias{filter_gl}
-\title{Filter function}
+\title{Evaluate one filter on a genlight object}
 \usage{
 filter_gl(gl, parameter, threshold, comparison_operator)
 }
+\arguments{
+\item{gl}{A genlight object with metrics from \code{\link[=recalc_metrics]{recalc_metrics()}}.}
+
+\item{parameter}{Character. Metric name, one of \code{maf}, \code{loc_miss},
+\code{loc_het}, \code{loc_Fis}, \code{ind_miss} or \code{ind_het}.}
+
+\item{threshold}{Numeric, at most 1.}
+
+\item{comparison_operator}{Character. One of \code{">"}, \code{">="}, \code{"<"} or \code{"<="}.
+Elements for which \verb{metric <operator> threshold} is \code{TRUE} are kept.}
+}
+\value{
+A list with \code{param}, \code{operator}, \code{threshold}, \code{filter_margin}
+(\code{"loc"} or \code{"ind"}), \code{index} (positions of the elements kept) and
+\code{filter_out} (names of the elements removed).
+}
 \description{
-This function generalizes the filtering functions using the parameter name
-and comparing in locus or individuals using the provided comparision operator.
-A list indicating the used thresold, if the filter was performed over individuals
-or locus and the indices of elements that meet the comparision.
+Finds the individuals or loci whose metric passes a comparison. The metric
+is looked up by name in \code{other$loc.metrics} or \code{other$ind.metrics}, which
+decides whether the filter acts on loci or on individuals. The object is not
+changed. \code{\link[=apply_sequence_filtering]{apply_sequence_filtering()}} applies the result.
+}
+\examples{
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = recalc_metrics(new("genlight", mt, ploidy = 2))
+filter_gl(gl, parameter = "loc_miss", threshold = 0.2,
+          comparison_operator = "<=")
+}
+\seealso{
+\code{\link[=apply_sequence_filtering]{apply_sequence_filtering()}}
 }

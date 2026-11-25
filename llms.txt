@@ -2,7 +2,7 @@
 
 > R package that reads SNP marker data (hapmap, VCF, DArTSeq, DArTag), converts it to allele dosages in an adegenet genlight object, and runs quality control, filtering, imputation and VCF export for diploid and polyploid crops. It is the genomic data engine of Bioflow, the CGIAR breeding analytics pipeline.
 
-Start with AGENTS.md. It maps tasks to functions and lists the known issues of version 1.0.2 with workarounds.
+Start with AGENTS.md. It maps tasks to functions and lists the known issues with workarounds.
 
 ## Docs
 

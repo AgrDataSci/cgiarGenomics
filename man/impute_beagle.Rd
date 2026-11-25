@@ -6,23 +6,26 @@
 \usage{
 impute_beagle(
   gl,
-  jre_path,
-  beagle_path,
-  memory = "Xmx1g",
+  jre_path = NULL,
+  beagle_path = NULL,
+  memory = "Xmx4g",
   burnin = 3,
   iterations = 12,
   seed = -99999,
-  nthreads = 16
+  nthreads = NULL
 )
 }
 \arguments{
 \item{gl}{A genlight object of exclusively diploid ploidity level.}
 
-\item{jre_path}{String. Path to the Java JRE directory.}
+\item{jre_path}{String. Path to Java executable or JRE directory.
+If NULL (default), auto-detected via find_java().}
 
-\item{beagle_path}{String. Path to the Beagle JAR file.}
+\item{beagle_path}{String. Path to the Beagle JAR file.
+If NULL (default), auto-detected via find_beagle_jar().}
 
-\item{memory}{String. Allowed memory for JVM. Default is "Xmx1g".}
+\item{memory}{String. Java memory setting, such as \code{"Xmx4g"} or
+\code{"Xmx512m"}. Any other text is refused.}
 
 \item{burnin}{Integer. Number of burn-in iterations. Default is 3.}
 
@@ -30,12 +33,21 @@ impute_beagle(
 
 \item{seed}{Integer. Seed for the random number generator. Default is -99999.}
 
-\item{nthreads}{Integer. Number of threads to use. Default is 16.}
+\item{nthreads}{Integer. Number of threads to use. Default uses get_default_beagle_threads().}
 }
 \value{
-A genlight object with imputed genotypes.
+A list where names are dosage values and elements are linear indices of imputed positions.
 }
 \description{
-This function converts a genlight object to a VCF file, runs Beagle for imputation using the specified JRE,
-reads the imputed VCF back, and returns the imputed genlight object.
+This function converts a genlight object to a VCF file, runs Beagle for imputation,
+reads the imputed VCF back, and returns the imputation dictionary.
+}
+\details{
+Java and the Beagle JAR are auto-detected by default:
+\itemize{
+\item Java is found via JAVA_HOME or system PATH
+\item Beagle JAR is found in the package's inst/extdata/ directory
+}
+
+Both can be overridden manually if needed.
 }

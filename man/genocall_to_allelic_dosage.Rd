@@ -7,35 +7,26 @@
 genocall_to_allelic_dosage(genotype_call, alt_allele, ploidity = 2, sep = "")
 }
 \arguments{
-\item{genotype_call}{String. Genotype call, e.g., "AG", "AAA" (for triploid).}
+\item{genotype_call}{String. Genotype call, e.g., \code{"AG"}, \code{"AAA"}.}
 
-\item{alt_allele}{String. Alternative allele, e.g., "A", "G".}
+\item{alt_allele}{String. Alternative allele, e.g., \code{"A"}.}
 
-\item{ploidity}{Integer. Ploidity level of the organism, default is 2 (diploid).}
+\item{ploidity}{Integer. Ploidity level of the organism, default is 2.}
+
+\item{sep}{String. Separator between alleles within the call (default \code{""}).}
 }
 \value{
-Integer. The allelic dosage of the given genotype call for the alternative allele.
+Integer. The dosage of \code{alt_allele}, or \code{NA}.
 }
 \description{
-This function takes a genotype call, an alternative allele, and the ploidity level
-of the organism as input, and returns the allelic dosage of the alternative allele
-in the genotype call.
-}
-\details{
-The genotype call is expected to be a string of characters representing the alleles,
-with each allele being a single character. For example, "AG" represents a diploid
-genotype with one allele being "A" and the other being "G".
-
-The allelic dosage is the count of the alternative allele in the genotype call.
-For example, if the genotype call is "AG" and the alternative allele is "A", the
-allelic dosage would be 1.
-
-If the genotype call is missing (represented as NA or an empty string), the
-function returns NA.
+Counts the copies of \code{alt_allele} in one genotype call. Phased separators
+(\code{|}) and \code{sep} are removed first. A missing call returns \code{NA}.
 }
 \examples{
-genocall_to_allelic_dosage("AG", "A")  # Returns 1
-genocall_to_allelic_dosage("GG", "A")  # Returns 0
-genocall_to_allelic_dosage("AAA", "A", 3)  # Returns 3 (triploid)
-genocall_to_allelic_dosage(NA, "A")  # Returns NA
+cgiarGenomics:::genocall_to_allelic_dosage("AG", "A")  # 1
+cgiarGenomics:::genocall_to_allelic_dosage("GG", "A")  # 0
+cgiarGenomics:::genocall_to_allelic_dosage("AAA", "A", 3)  # 3
+cgiarGenomics:::genocall_to_allelic_dosage("A/G", "G", sep = "/")  # 1
+cgiarGenomics:::genocall_to_allelic_dosage(NA, "A")  # NA
 }
+\keyword{internal}

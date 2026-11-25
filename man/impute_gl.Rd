@@ -2,41 +2,54 @@
 % Please edit documentation in R/geno_imputation.R
 \name{impute_gl}
 \alias{impute_gl}
-\title{Impute a gl object
- 
-Impute a genlight object using frequency or random forest method.
-Returns a list with imputed genlight object and imputation log.}
+\title{Impute a gl object}
 \usage{
-impute_gl(
-  gl,
-  ploidity = 2,
-  method = "frequency",
-  nflank = 100,
-  ntree = 100,
-  seed = NULL
-)
+impute_gl(gl, ploidity = 2, method, ...)
 }
 \arguments{
 \item{gl}{genlight object}
 
-\item{ploidity}{ploidy level (default=2)}
+\item{ploidity}{Integer. Ploidy level (default 2). Must match the object.}
 
-\item{method}{Imputation method: 'frequency' or 'random_forest' (default='frequency')}
+\item{method}{Character. \code{"frequency"}, \code{"random_forest"} or \code{"beagle"}.
+There is no default.}
 
-\item{nflank}{Number of flanking markers for RF method (default=100)}
-
-\item{ntree}{Number of trees for RF method (default=100)}
-
-\item{seed}{Optional seed for reproducibility (RF method)}
+\item{...}{Named, method-specific arguments listed above. Unknown names are
+an error.}
 }
 \value{
 List with elements:
-  - gl: imputed genlight object
-  - log: imputation dictionary (imputed positions grouped by dosage)
+\itemize{
+\item gl: imputed genlight object
+\item log: imputation dictionary (imputed positions grouped by dosage)
+}
 }
 \description{
-Impute a gl object
- 
-Impute a genlight object using frequency or random forest method.
-Returns a list with imputed genlight object and imputation log.
+Fills missing dosages with one of three methods and returns a new genlight
+object with recalculated metrics. Loci with no data are removed first, with
+a warning. An object with no missing calls is returned with an empty log.
+The function stops when a method returns a value outside the dosage range.
+}
+\details{
+\itemize{
+\item \code{"frequency"} draws each missing call from the allele frequency of its
+locus with \code{\link[=i_freq_impute]{i_freq_impute()}}. Fast, ignores linkage.
+\item \code{"random_forest"} predicts each missing call from flanking markers on the
+same chromosome. Extra arguments \code{nflank}, \code{ntree}, \code{seed}, \code{nthreads}.
+Needs the suggested package randomForest.
+\item \code{"beagle"} runs Beagle 5 on a temporary VCF, diploids only, see
+\code{\link[=impute_beagle]{impute_beagle()}}. Extra arguments \code{jre_path}, \code{beagle_path}, \code{memory},
+\code{burnin}, \code{iterations}, \code{seed}, \code{nthreads}.
+}
+}
+\examples{
+mt = matrix(c(0, 1, 2, NA,
+              2, 2, 1, 0,
+              0, 1, NA, 2),
+            nrow = 4,
+            dimnames = list(paste0("ind", 1:4), paste0("snp", 1:3)))
+gl = new("genlight", mt, ploidy = 2)
+set.seed(1)
+imp = impute_gl(gl, ploidity = 2, method = "frequency")
+as.matrix(imp$gl)
 }

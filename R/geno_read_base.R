@@ -11,8 +11,6 @@
 #' the minimal requirements: no duplicated markers, physical position, bi-allelic,
 #'  allelic information, SNP.
 #'
-#' @section Known issue:
-#' Duplicated marker IDs are not renamed. See `dev/audit.md`, finding R1.
 #' @noRd
 process_metadata <- function(geno_metadata){
   # Expected fields id Chrom pos ref alt
@@ -49,7 +47,7 @@ process_metadata <- function(geno_metadata){
   }
   
   # Check duplicated ids
-  id_dup = duplicated(geno_metadata['id'])
+  id_dup <- duplicated(geno_metadata[['id']])
   
   if(sum(id_dup) > 0){
     cli::cli_inform("Were found {sum(id_dup)} markers with duplicated id. \n
@@ -58,7 +56,8 @@ process_metadata <- function(geno_metadata){
   
   geno_metadata <- geno_metadata %>%
     dplyr::mutate(
-      id = dplyr::if_else(dplyr::row_number() %in% id_dup,  paste0(chrom, "_", pos), id),
+      # rename every repeated id, then make sure no two ids are equal
+      id = make.unique(dplyr::if_else(id_dup, paste0(chrom, "_", pos), as.character(id))),
       allele_count = stringr::str_count(alt, ",") + 1,
       ref_len = dplyr::if_else(stringr::str_detect(ref, "^[ACGT]$"),nchar(ref),NA),
       alt_len = dplyr::if_else(stringr::str_detect(alt, "^[ACGT]$"),nchar(stringr::str_replace(alt, ",", "")),NA) 
@@ -66,10 +65,14 @@ process_metadata <- function(geno_metadata){
   
   # Flag no reference alleles
   ref_alt_na_idx <- which(is.na(geno_metadata['ref_len']) | is.na(geno_metadata['alt_len']))
-  no_ref_alt <- length(ref_alt_na_idx)
+  # multi-allelic markers are reported in their own message below
+  allele_count_na <- geno_metadata$allele_count[ref_alt_na_idx]
+  no_ref_alt <- sum(is.na(allele_count_na) | allele_count_na == 1)
   
   if(no_ref_alt > 0){
     cli::cli_inform("Were found {no_ref_alt} without ref and alt allele data")
+  }
+  if(length(ref_alt_na_idx) > 0){
     geno_metadata[ref_alt_na_idx,'filter'] <- TRUE
   }
   
@@ -142,12 +145,12 @@ get_allelic_dosage <- function(l, alleles, ploidity, sep = "") {
 #' @param sep String. Separator placed between alleles (default `""`).
 #'
 #' @return Character vector of all possible genotype calls.
-#' @export
+#' @keywords internal
 #'
 #' @examples
-#' get_all_gt_calls(c("A", "B"), 2)  # "AA" "AB" "BA" "BB"
-#' get_all_gt_calls(c("A", "B"), 2, sep = "/")  # "A/A" "A/B" "B/A" "B/B"
-#' length(get_all_gt_calls(c("A", "B", "C"), 3))  # 27
+#' cgiarGenomics:::get_all_gt_calls(c("A", "B"), 2)  # "AA" "AB" "BA" "BB"
+#' cgiarGenomics:::get_all_gt_calls(c("A", "B"), 2, sep = "/")  # "A/A" "A/B" "B/A" "B/B"
+#' length(cgiarGenomics:::get_all_gt_calls(c("A", "B", "C"), 3))  # 27
 get_all_gt_calls <- function(alleles, ploidity, sep = "") {
   sep <- gsub("\\\\", "", sep)
   generate_calls <- function(prefix, ploidity, del = sep) {
@@ -180,11 +183,11 @@ get_all_gt_calls <- function(alleles, ploidity, sep = "") {
 #' @param sep String. Separator between alleles within a call (default `""`).
 #'
 #' @return A named vector with the dosage of `alt_allele` in each call.
-#' @export
+#' @keywords internal
 #'
 #' @examples
-#' convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # 1, 0, 2
-#' convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # 3, 0
+#' cgiarGenomics:::convert_gt_to_dosage(c("AG", "GG", "AA"), "A")  # 1, 0, 2
+#' cgiarGenomics:::convert_gt_to_dosage(c("AAA", "GGG"), "A", 3)  # 3, 0
 convert_gt_to_dosage <- function(locus, alt_allele, ploidity = 2,sep="") {
   sep <- gsub("\\\\", "", sep)
   l <- sapply(locus,
@@ -206,14 +209,14 @@ convert_gt_to_dosage <- function(locus, alt_allele, ploidity = 2,sep="") {
 #' @param sep String. Separator between alleles within the call (default `""`).
 #'
 #' @return Integer. The dosage of `alt_allele`, or `NA`.
-#' @export
+#' @keywords internal
 #'
 #' @examples
-#' genocall_to_allelic_dosage("AG", "A")  # 1
-#' genocall_to_allelic_dosage("GG", "A")  # 0
-#' genocall_to_allelic_dosage("AAA", "A", 3)  # 3
-#' genocall_to_allelic_dosage("A/G", "G", sep = "/")  # 1
-#' genocall_to_allelic_dosage(NA, "A")  # NA
+#' cgiarGenomics:::genocall_to_allelic_dosage("AG", "A")  # 1
+#' cgiarGenomics:::genocall_to_allelic_dosage("GG", "A")  # 0
+#' cgiarGenomics:::genocall_to_allelic_dosage("AAA", "A", 3)  # 3
+#' cgiarGenomics:::genocall_to_allelic_dosage("A/G", "G", sep = "/")  # 1
+#' cgiarGenomics:::genocall_to_allelic_dosage(NA, "A")  # NA
 genocall_to_allelic_dosage <- function(genotype_call, alt_allele, ploidity = 2,sep="") {
   if (!is.na(nchar(genotype_call))) {
     # remove separators (and normalize phasing if present)
@@ -252,12 +255,12 @@ genocall_to_allelic_dosage <- function(genotype_call, alt_allele, ploidity = 2,s
 #'
 #' @return A list of integers, where each string in the input list has been replaced with its
 #'         corresponding integer value from the lookup table, or NA if no match was found.
-#' @export
+#' @keywords internal
 #'
 #' @examples
 #' lookup <- c(A = 1, B = 2, C = 3)
 #' strings <- c("B", "A", "D", "C")
-#' replace_strings_with_integers(lookup, strings)  # Returns list(2, 1, NA, 3)
+#' cgiarGenomics:::replace_strings_with_integers(lookup, strings)  # Returns list(2, 1, NA, 3)
 replace_strings_with_integers <- function(lookup_table, strings_to_replace) {
   # Use match to find the indices of the strings in the lookup table
   indices <- match(strings_to_replace, names(lookup_table))
