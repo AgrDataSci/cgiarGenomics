@@ -159,7 +159,7 @@ Report bugs and ideas in the [issue tracker](https://github.com/Breeding-Analyti
 
 ## Cite
 
-Cite the package in R with `citation("cgiarGenomics")`. When you use it through Bioflow, cite Bioflow as well.
+Cite the package in R with `citation("cgiarGenomics")`, or use [`CITATION.cff`](CITATION.cff), which GitHub shows under "Cite this repository". When you use it through Bioflow, cite Bioflow as well. Cite Beagle too when you impute with it.
 
 ## License
 

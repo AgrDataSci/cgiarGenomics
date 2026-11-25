@@ -32,7 +32,7 @@ Useful links:
 Authors:
 \itemize{
   \item Sergio Andres Cruz \email{s.cruz@cgiar.org}
-  \item Lorena Batista Guimarães
+  \item Lorena Guimarães Batista
 }
 
 }
