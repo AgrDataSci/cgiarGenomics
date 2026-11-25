@@ -11,3 +11,4 @@
 ^LICENSE\.md$
 ^\.github$
 ^test_scripts$
+^CITATION\.cff$

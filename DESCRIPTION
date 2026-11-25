@@ -6,7 +6,7 @@ Date: 2026-11-25
 Authors@R:
     c(person(given = "Sergio Andres", family = "Cruz",
              email = "s.cruz@cgiar.org", role = c("aut", "cre")),
-      person(given = "Lorena", family = "Batista Guimarães",
+      person(given = "Lorena", family = "Guimarães Batista",
              role = "aut"))
 Description: Reads bi-allelic SNP marker data from hapmap, VCF, DArTSeq and
     DArTag files for diploid and polyploid crops, and converts them to allele

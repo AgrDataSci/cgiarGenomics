@@ -22,7 +22,7 @@ The tests were written against the fixed code. They were not run against version
 | `ploidity` and `ploidy` spellings | D8 |
 | GPL text for the bundled Beagle JAR, and the decision to keep bundling it | D7 |
 | Provenance and reuse terms of the example files in `tests/` | E8 |
-| `CITATION.cff`, a DOI and a tagged release | D6 |
+| A DOI and a tagged release | D6 |
 | Windows job in CI, large-panel benchmarks, end-to-end run through Bioflow | E9 |
 
 The summary table below describes version 1.0.2.
@@ -126,7 +126,7 @@ The full list follows, grouped by area, with file and line.
 
 **D5. Undeclared and unneeded dependencies (Medium, confirmed, fixed in PR #3).** `plot_overall_missingness()` calls `ggpubr`, which is not declared. The three plot functions in `R/QC_plots_adegenet.R` use an older object layout (`geno_obj$geno`) and are not exported, yet they pull ggplot2, ggrepel and scales into Imports. `parallel` is used under Suggests without a `requireNamespace()` check. Remove or update the plots and move their packages to Suggests.
 
-**D6. Metadata is out of date (Medium, fixed in PR #2).** `DESCRIPTION` now has `Authors@R` (Sergio Andres Cruz, author and maintainer, and Lorena Batista Guimarães, author), a current date, a full description, and `URL` and `BugReports`. There is still no `CITATION.cff` and no DOI.
+**D6. Metadata is out of date (Medium, fixed in PR #2).** `DESCRIPTION` now has `Authors@R` (Sergio Andres Cruz, author and maintainer, and Lorena Guimarães Batista, author), a current date, a full description, and `URL` and `BugReports`. PR #3 adds `CITATION.cff`. There is still no DOI or tagged release.
 
 **D7. Beagle JAR in the package (High, corrected in PR #3).** The first version of this audit said Beagle is under Apache 2.0. That was wrong. Its authors release Beagle 5.5 under the GNU General Public License, version 3 or later. `inst/extdata/README.md` and the README now say so, with the source, version and SHA-256 of `beagle.27Feb25.75f.jar`. The GPL text is still not shipped next to the JAR, and the rights holder has not yet decided whether to keep bundling it or to fetch it at set-up. CRAN will not accept the JAR inside the package.
 

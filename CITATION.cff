@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use cgiarGenomics, please cite it as below. When you run it through Bioflow, cite Bioflow as well."
+type: software
+title: "cgiarGenomics. Reading, quality control and imputation of SNP marker data"
+abstract: >-
+  cgiarGenomics reads bi-allelic SNP marker data from hapmap, VCF, DArTSeq and
+  DArTag files for diploid and polyploid crops, and converts them to allele
+  dosages in an adegenet genlight object. It provides quality metrics,
+  sequential filtering of loci and individuals, imputation by allele frequency,
+  Random Forest or Beagle, merging of replicate samples, identity-by-state and
+  Mendelian checks, and export to VCF. It is the genomic data engine of
+  Bioflow, the CGIAR breeding analytics pipeline.
+authors:
+  - given-names: "Sergio Andres"
+    family-names: "Cruz"
+    email: "s.cruz@cgiar.org"
+  - given-names: "Lorena"
+    family-names: "Guimarães Batista"
+version: "1.0.3"
+license: MIT
+repository-code: "https://github.com/Breeding-Analytics/cgiarGenomics"
+url: "https://github.com/Breeding-Analytics/bioflow"
+keywords:
+  - genomics
+  - SNP
+  - genotyping
+  - imputation
+  - quality control
+  - plant breeding
+  - polyploid
+  - R
+references:
+  - type: software
+    title: "Beagle"
+    version: "5.5"
+    authors:
+      - given-names: "Brian L."
+        family-names: "Browning"
+    url: "https://faculty.washington.edu/browning/beagle/beagle.html"
+    license: GPL-3.0-or-later
